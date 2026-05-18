@@ -4,105 +4,143 @@
  */
 
 import { motion, useScroll, useTransform } from 'motion/react';
-import { ArrowRight, PlayCircle, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
+
+
+
+
 
 export default function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start start", "end start"]
+    offset: ['start start', 'end start'],
   });
 
-  const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
+  const bgY = useTransform(scrollYProgress, [0, 1], ['0%', '15%']);
+  const contentY = useTransform(scrollYProgress, [0, 1], ['0%', '8%']);
+  const opacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
 
   return (
-    <section 
+    <section
       ref={containerRef}
-      id="home" 
-      className="relative min-h-screen flex items-center pt-32 pb-24 overflow-hidden bg-white"
+      id="home"
+      className="relative min-h-screen flex flex-col overflow-hidden"
     >
-      {/* Visual Accent */}
-      <div className="absolute top-0 right-0 w-2/3 h-full bg-brand-50/50 -z-10" 
-           style={{ clipPath: 'polygon(35% 0%, 100% 0%, 100% 100%, 0% 100%)' }} />
-
-      <div className="relative z-20 w-full px-4 sm:px-12 lg:px-20 grid lg:grid-cols-2 gap-16 items-center">
-        <div className="max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-100 text-brand-900 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-8">
-              <span className="w-2 h-2 bg-brand-600 rounded-full animate-pulse" />
-              Agritech Precision AI
-            </div>
-            <h1 className="text-6xl sm:text-7xl lg:text-[100px] font-black text-brand-950 tracking-tight leading-[0.92] mb-8">
-              Analyze Drone <br />
-              Imagery Into <br />
-              <span className="text-brand-600">Estate Intelligence.</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-slate-600 leading-relaxed max-w-2xl mb-12 font-medium">
-              Leverage autonomous tree-level detection to monitor health, mitigate disease, and automate your VRA fertilization strategy.
-            </p>
-            
-            <div className="flex flex-wrap gap-5">
-              <Link to="/auth" className="bg-brand-900 text-white px-10 py-5 rounded-2xl font-black text-lg flex items-center gap-3 hover:bg-brand-800 transition-all hover:scale-[1.02] shadow-2xl shadow-brand-900/20 active:scale-95 group">
-                Start Analysis
-                <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <button className="bg-white text-brand-950 border-2 border-slate-100 px-10 py-5 rounded-2xl font-black text-lg flex items-center gap-3 hover:border-brand-600 hover:text-brand-600 transition-all shadow-xl active:scale-95">
-                <PlayCircle className="w-6 h-6" />
-                Watch Demo
-              </button>
-            </div>
-
-            <div className="mt-20 flex flex-wrap items-center gap-10 opacity-40">
-               <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Validated by Global Research</div>
-               <div className="flex items-center gap-8">
-                  <div className="font-black text-xl tracking-tighter">MOPAD</div>
-                  <div className="font-black text-xl tracking-tighter">AGRISAT</div>
-                  <div className="font-black text-xl tracking-tighter">UAV-LAB</div>
-               </div>
-            </div>
-          </motion.div>
-        </div>
-
+      {/* ── Parallax plantation background & Overlays ────────────────────────────── */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{ 
+          maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
+        }}
+      >
         <motion.div
-           initial={{ opacity: 0, scale: 0.9, y: 40 }}
-           animate={{ opacity: 1, scale: 1, y: 0 }}
-           transition={{ duration: 1, delay: 0.2 }}
-           className="relative"
+          className="absolute inset-0 w-full h-full"
+          style={{ y: bgY }}
         >
-           {/* Mockup Display */}
-           <div className="relative z-10 p-4 bg-white border border-slate-200 rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(4,78,87,0.15)] overflow-hidden">
-              <div className="rounded-[2rem] overflow-hidden border border-slate-100 relative group">
-                 <img 
-                    src="https://images.unsplash.com/photo-1591871925063-d4c6a9170493?q=80&w=1200&auto=format&fit=crop" 
-                    alt="Nyawit Dashboard Mockup" 
-                    className="w-full h-auto"
-                 />
-                 <div className="absolute inset-0 bg-brand-950/20 group-hover:bg-brand-950/10 transition-colors" />
-                 
-                 {/* Floating Info Overlays */}
-                 <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-2xl flex items-center gap-3">
-                    <div className="w-10 h-10 bg-brand-500/20 rounded-full flex items-center justify-center">
-                       <ShieldCheck className="text-brand-700 w-6 h-6" />
-                    </div>
-                    <div>
-                       <p className="text-[10px] font-black text-brand-900 uppercase">Detection Accuracy</p>
-                       <p className="text-xl font-black text-brand-950 leading-none">99.4%</p>
-                    </div>
-                 </div>
-              </div>
-           </div>
-
-           {/* Decor Blobs */}
-           <div className="absolute -top-10 -right-10 w-72 h-72 bg-brand-100/50 rounded-full blur-[80px] -z-10" />
-           <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-brand-500/10 rounded-full blur-[60px] -z-10" />
+          <img
+            src="/hero-plantation.png"
+            alt="Aerial oil palm plantation"
+            className="w-full h-full object-cover object-center scale-110"
+            loading="eager"
+          />
         </motion.div>
+
+        {/* ── Layered organic overlays for text legibility & transition ──────────────────── */}
+        {/* Deep palm green base tint */}
+        <div className="absolute inset-0 bg-[#022c22]/40" />
+        
+        {/* Central soft vignette (muted forest green/black) for text readability */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(circle at 50% 50%, rgba(2, 44, 34, 0.2) 0%, rgba(2, 44, 34, 0.6) 100%)',
+          }}
+        />
+        
+        {/* Top subtle fade for navbar integration */}
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#011712]/70 to-transparent" />
       </div>
+
+
+
+      {/* ── Main centered content ────────────────────────────────────────── */}
+      <motion.div
+        className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 pt-24 pb-20"
+        style={{ y: contentY, opacity }}
+      >
+        {/* AI badge removed per user request */}
+
+        {/* Headline */}
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, delay: 0.4, ease: 'easeOut' }}
+          className="text-5xl sm:text-6xl lg:text-7xl font-semibold text-white tracking-tight leading-[1.1] max-w-5xl mb-8"
+          style={{ textShadow: '0 4px 24px rgba(2, 44, 34, 0.4)' }}
+        >
+          Precision Analytics for <br />
+          <span
+            className="font-light italic text-[#F8FAF6]"
+          >
+            Modern Agriculture
+          </span>
+        </motion.h1>
+
+        {/* Subheadline */}
+        <motion.p
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, delay: 0.55, ease: 'easeOut' }}
+          className="text-lg sm:text-xl text-white/80 leading-relaxed max-w-2xl mb-12 font-light"
+          style={{ textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}
+        >
+          Nyawit AI transforms aerial imagery into actionable estate insights, empowering teams with data-driven tree health mapping and proactive resource optimization.
+        </motion.p>
+
+        {/* CTA buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.7, ease: 'easeOut' }}
+          className="flex flex-wrap items-center justify-center gap-5"
+        >
+          <Link
+            to="/auth"
+            className="flex items-center gap-3 px-10 py-4 rounded-full font-semibold text-sm text-[#022c22] transition-all hover:scale-[1.02] active:scale-95 group"
+            style={{
+              background: '#F8FAF6',
+              boxShadow: '0 8px 32px rgba(248,250,246,0.15)',
+            }}
+          >
+            Start Monitoring
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
+          {/* View Demo button removed per user request */}
+        </motion.div>
+      </motion.div>
+
+
+      {/* ── Scroll indicator ────────────────────────────────────────────────── */}
+      <motion.div
+        className="absolute bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.6, duration: 1 }}
+      >
+        <div
+          className="w-5 h-8 rounded-full border border-[#022c22]/20 flex items-start justify-center pt-1.5"
+        >
+          <motion.div
+            className="w-1 h-1.5 rounded-full bg-[#022c22]/40"
+            animate={{ y: [0, 8, 0] }}
+            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+          />
+        </div>
+      </motion.div>
     </section>
   );
 }

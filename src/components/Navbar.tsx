@@ -36,8 +36,8 @@ export default function Navbar() {
             <div className="w-10 h-10 bg-brand-900 rounded-xl flex items-center justify-center shadow-lg shadow-brand-900/10">
               <Leaf className="text-brand-500 w-6 h-6" />
             </div>
-            <span className="text-brand-950 font-black text-2xl tracking-tighter">
-              Nyawit<span className="text-brand-600">AI</span>
+            <span className={`font-black text-2xl tracking-tighter transition-colors duration-300 ${scrolled ? 'text-brand-950' : 'text-white'}`}>
+              Nyawit<span className="text-brand-500">AI</span>
             </span>
           </Link>
           
@@ -46,7 +46,9 @@ export default function Navbar() {
               <a
                 key={link.name}
                 href={link.href}
-                className="text-slate-600 hover:text-brand-600 px-1 py-2 text-sm font-bold tracking-tight transition-colors"
+                className={`px-1 py-2 text-sm font-bold tracking-tight transition-colors duration-300 ${
+                  scrolled ? 'text-slate-600 hover:text-brand-600' : 'text-white/80 hover:text-white'
+                }`}
                 onClick={(e) => {
                   if (window.location.pathname !== '/') {
                     navigate('/');
@@ -56,11 +58,13 @@ export default function Navbar() {
                 {link.name}
               </a>
             ))}
-            <div className="flex items-center gap-4 pl-4 border-l border-slate-200">
-              <Link to="/auth" className="text-sm font-bold text-slate-700 hover:text-brand-600 transition-colors">
-                Login
+            <div className={`flex items-center gap-4 pl-4 border-l transition-colors duration-300 ${scrolled ? 'border-slate-200' : 'border-white/20'}`}>
+              <Link to="/auth" className={`px-6 py-2.5 rounded-full text-sm font-black transition-all hover:scale-105 active:scale-95 ${
+                scrolled ? 'bg-brand-900 text-white shadow-xl shadow-brand-900/10 hover:bg-brand-800' : 'bg-white/15 text-white border border-white/30 backdrop-blur-sm hover:bg-white/25'
+              }`}>
+                Log In
               </Link>
-              <Link to="/auth" className="bg-brand-900 text-white px-6 py-2.5 rounded-full text-sm font-black hover:bg-brand-800 transition-all shadow-xl shadow-brand-900/10 hover:scale-105 active:scale-95">
+              <Link to="/auth" className="bg-brand-600 text-white px-6 py-2.5 rounded-full text-sm font-black hover:bg-brand-500 transition-all shadow-lg hover:scale-105 active:scale-95">
                 Sign Up
               </Link>
             </div>

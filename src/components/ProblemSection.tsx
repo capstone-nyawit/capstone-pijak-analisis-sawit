@@ -1,10 +1,6 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { motion } from 'motion/react';
 import { Clock, TrendingDown, ShieldAlert, DatabaseZap } from 'lucide-react';
+import { DottedSurface } from './ui/dotted-surface';
 
 const problems = [
   {
@@ -31,52 +27,57 @@ const problems = [
 
 export default function ProblemSection() {
   return (
-    <section className="py-32 bg-white relative overflow-hidden">
+    <section className="py-24 relative">
+      <div className="absolute inset-0 pointer-events-none" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)' }}>
+        <DottedSurface />
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-20 items-center">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
             >
-              <h2 className="text-brand-600 font-black text-xs uppercase tracking-[0.4em] mb-6">Industrial Challenges</h2>
-              <h3 className="text-5xl font-black text-brand-950 tracking-tight leading-tight mb-8">
+              <h2 className="text-[#4ade80] font-semibold text-xs uppercase tracking-[0.3em] mb-6">Industrial Challenges</h2>
+              <h3 className="text-4xl sm:text-5xl font-semibold text-[#F8FAF6] tracking-tight leading-[1.15] mb-8">
                 Traditional Estate <br />
                 Management Is <br />
-                <span className="text-red-500">Bleeding Efficiency.</span>
+                <span className="text-[#d97706] font-light italic">Bleeding Efficiency.</span>
               </h3>
-              <p className="text-xl text-slate-600 leading-relaxed font-medium mb-10">
-                Operating blindly at scale costs millions in yield loss and chemical waste. NyawitAI provides the visibility required for modern carbon-negative agriculture.
+              <p className="text-lg text-white/60 leading-relaxed font-light mb-10 max-w-lg">
+                Operating blindly at scale costs millions in yield loss and chemical waste. NyawitAI provides the visibility required for modern, sustainable agriculture.
               </p>
               
-              <div className="flex items-center gap-6 p-6 bg-brand-50 rounded-3xl border border-brand-100">
-                 <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm">
-                    <TrendingDown className="text-red-500 w-7 h-7" />
+              <div className="flex items-center gap-6 p-6 bg-white/[0.02] backdrop-blur-3xl rounded-[2rem] border border-white/[0.06] shadow-[inset_0_1px_3px_rgba(255,255,255,0.1),_0_8px_32px_rgba(0,0,0,0.3)]">
+                 <div className="w-12 h-12 bg-white/[0.02] rounded-xl flex items-center justify-center border border-white/[0.05]">
+                    <TrendingDown className="text-[#d97706] w-6 h-6" />
                  </div>
                  <div>
-                    <p className="text-brand-950 font-black text-lg">-22% Estate Yield</p>
-                    <p className="text-slate-500 text-sm font-medium">Average loss due to delayed disease intervention.</p>
+                    <p className="text-[#F8FAF6] font-semibold text-lg">-22% Estate Yield</p>
+                    <p className="text-white/50 text-sm font-light">Average loss due to delayed disease intervention.</p>
                  </div>
               </div>
             </motion.div>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-6">
+          <div className="grid sm:grid-cols-2 gap-4">
             {problems.map((p, i) => (
               <motion.div
                 key={p.title}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-slate-50 p-8 rounded-[2rem] border border-slate-100 hover:bg-white hover:shadow-2xl transition-all group"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
+                className="bg-white/[0.02] backdrop-blur-3xl p-8 rounded-[2rem] border border-white/[0.06] shadow-[inset_0_1px_3px_rgba(255,255,255,0.1),_0_8px_32px_rgba(0,0,0,0.3)] hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-500 group"
               >
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform">
-                  <p.icon className="text-brand-900 w-6 h-6" />
+                <div className="w-12 h-12 bg-[#064e3b]/30 rounded-xl border border-white/[0.03] flex items-center justify-center mb-6 group-hover:bg-[#10b981]/10 transition-colors duration-500">
+                  <p.icon className="text-[#4ade80] w-5 h-5" strokeWidth={1.5} />
                 </div>
-                <h4 className="text-xl font-black text-brand-950 mb-3 tracking-tight">{p.title}</h4>
-                <p className="text-slate-500 text-sm leading-relaxed font-medium">{p.description}</p>
+                <h4 className="text-lg font-semibold text-[#F8FAF6] mb-3">{p.title}</h4>
+                <p className="text-white/60 text-sm leading-relaxed font-light">{p.description}</p>
               </motion.div>
             ))}
           </div>
