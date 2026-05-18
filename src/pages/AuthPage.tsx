@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function AuthPage() {
   const [authView, setAuthView] = useState<'login' | 'signup' | 'forgot'>('login');
+  const [accountType, setAccountType] = useState<'individual' | 'enterprise'>('individual');
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -211,8 +212,49 @@ export default function AuthPage() {
                       exit={{ opacity: 0, height: 0 }}
                       className="space-y-6 overflow-hidden pb-1"
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-2">
+                      {/* Account Type Selector */}
+                      <div className="grid grid-cols-2 gap-2 p-2 bg-[#f0eee6]/60 rounded-2xl border border-[#e5e2d6]/50">
+                        <button 
+                          type="button"
+                          onClick={() => setAccountType('individual')}
+                          className={`flex flex-col items-start p-4 text-left rounded-xl transition-all duration-300 ${
+                            accountType === 'individual' 
+                              ? 'bg-white shadow-[0_8px_20px_rgba(4,33,26,0.08)] border border-emerald-100 scale-[1.02]' 
+                              : 'bg-transparent hover:bg-black/5 border border-transparent opacity-70 hover:opacity-100 scale-100'
+                          }`}
+                        >
+                          <span className={`text-sm font-extrabold mb-1 ${accountType === 'individual' ? 'text-[#04211a]' : 'text-slate-600'}`}>
+                            Individual
+                          </span>
+                          <span className={`text-[11px] leading-relaxed font-medium ${accountType === 'individual' ? 'text-slate-500' : 'text-slate-400'}`}>
+                            For personal or trial account.
+                          </span>
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setAccountType('enterprise')}
+                          className={`flex flex-col items-start p-4 text-left rounded-xl transition-all duration-300 ${
+                            accountType === 'enterprise' 
+                              ? 'bg-white shadow-[0_8px_20px_rgba(4,33,26,0.08)] border border-emerald-100 scale-[1.02]' 
+                              : 'bg-transparent hover:bg-black/5 border border-transparent opacity-70 hover:opacity-100 scale-100'
+                          }`}
+                        >
+                          <span className={`text-sm font-extrabold mb-1 ${accountType === 'enterprise' ? 'text-[#04211a]' : 'text-slate-600'}`}>
+                            Enterprise / Organization
+                          </span>
+                          <span className={`text-[11px] leading-relaxed font-medium ${accountType === 'enterprise' ? 'text-slate-500' : 'text-slate-400'}`}>
+                            For team or company account.
+                          </span>
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col md:flex-row">
+                        {/* Full Name */}
+                        <div 
+                          className={`space-y-2 transition-all duration-300 ease-out ${
+                            accountType === 'enterprise' ? 'w-full md:w-[calc(50%-10px)]' : 'w-full'
+                          }`}
+                        >
                           <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
                             <User className="w-3.5 h-3.5 opacity-40" />
                             Full Name
@@ -224,17 +266,27 @@ export default function AuthPage() {
                             className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
-                            <Building2 className="w-3.5 h-3.5 opacity-40" />
-                            Company Name
-                          </label>
-                          <input 
-                            required
-                            type="text" 
-                            placeholder="Sumatra Agri"
-                            className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
-                          />
+
+                        {/* Company Name (Smooth Fluid Transition Container) */}
+                        <div 
+                          className={`space-y-2 transition-all duration-300 ease-out overflow-hidden ${
+                            accountType === 'enterprise' 
+                              ? 'w-full md:w-[calc(50%-10px)] opacity-100 max-h-[150px] mt-5 md:mt-0 md:ml-5' 
+                              : 'w-0 opacity-0 max-h-0 md:max-h-[150px] mt-0 md:mt-0 md:ml-0 pointer-events-none'
+                          }`}
+                        >
+                          <div className="min-w-[200px]">
+                            <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                              <Building2 className="w-3.5 h-3.5 opacity-40" />
+                              Company Name
+                            </label>
+                            <input 
+                              required={accountType === 'enterprise'}
+                              type="text" 
+                              placeholder="Sumatra Agri"
+                              className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
+                            />
+                          </div>
                         </div>
                       </div>
                     </motion.div>
