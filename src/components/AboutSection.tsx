@@ -57,12 +57,6 @@ export default function AboutSection() {
               <p>
                 Our core technology leverages <strong className="text-[#F8FAF6] font-semibold">Faster R-CNN</strong> deep learning architectures, specifically tuned for the unique geometry of oil palm crowns. This allows us to detect subtle health shifts — such as yellowing due to nutrient deficiency or stunting — weeks before they impact harvest yield.
               </p>
-              <div className="pt-6">
-                 <button className="flex items-center gap-4 text-[#F8FAF6] font-semibold text-sm uppercase tracking-widest hover:text-[#4ade80] transition-colors group">
-                    View Project Documentation
-                    <div className="w-10 h-px bg-white/20 group-hover:w-16 group-hover:bg-[#4ade80]/50 transition-all" />
-                 </button>
-              </div>
             </div>
           </motion.div>
         </div>

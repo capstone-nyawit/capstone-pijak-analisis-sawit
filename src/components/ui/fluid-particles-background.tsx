@@ -134,20 +134,13 @@ export const FluidParticlesBackground = ({
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
-    // Modified resizeCanvas to match parent element rather than full window, 
-    // since we want it as a section background.
-    const resizeCanvas = () => {
-      const parent = canvas.parentElement;
-      if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = parent.clientHeight;
-      } else {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }
-    };
-
-    resizeCanvas(); // Initial resize
+    const parent = canvas.parentElement;
+    
+    // Set initial size safely
+    let lastWidth = parent ? parent.clientWidth : window.innerWidth;
+    let lastHeight = parent ? parent.clientHeight : window.innerHeight;
+    canvas.width = lastWidth > 0 ? lastWidth : 800;
+    canvas.height = lastHeight > 0 ? lastHeight : 600;
 
     const particles: Particle[] = Array.from({ length: particleCount }, () => ({
       x: Math.random() * canvas.width,
@@ -160,12 +153,56 @@ export const FluidParticlesBackground = ({
       maxLife: 100 + Math.random() * 50,
     }));
 
+    const resizeCanvas = (width: number, height: number) => {
+      const w = Math.floor(width);
+      const h = Math.floor(height);
+      if (w === 0 || h === 0) return;
+
+      const prevWidth = canvas.width;
+      const prevHeight = canvas.height;
+
+      if (prevWidth === w && prevHeight === h) return;
+
+      canvas.width = w;
+      canvas.height = h;
+
+      // Rescale particle positions proportionally so they remain distributed
+      if (prevWidth > 0 && prevHeight > 0) {
+        const scaleX = w / prevWidth;
+        const scaleY = h / prevHeight;
+        for (const particle of particles) {
+          particle.x *= scaleX;
+          particle.y *= scaleY;
+        }
+      }
+    };
+
+    // Use ResizeObserver to detect layout size changes of the parent element
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Fallback to clientWidth/Height if contentRect is zero
+        const width = entry.contentRect.width || (parent ? parent.clientWidth : 0);
+        const height = entry.contentRect.height || (parent ? parent.clientHeight : 0);
+        if (width > 0 && height > 0) {
+          resizeCanvas(width, height);
+        }
+      }
+    });
+
+    if (parent) {
+      resizeObserver.observe(parent);
+    }
+
+    const startTime = Date.now();
+
     const animate = () => {
       const scheme = COLOR_SCHEME.dark;
 
       // Clear canvas with a semi-transparent background to create trails
       ctx.fillStyle = scheme.background;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const elapsed = (Date.now() - startTime) * 0.0001;
 
       for (const particle of particles) {
         particle.life += 1;
@@ -182,7 +219,7 @@ export const FluidParticlesBackground = ({
         const n = noise.simplex3(
           particle.x * noiseIntensity,
           particle.y * noiseIntensity,
-          Date.now() * 0.0001,
+          elapsed,
         );
 
         const angle = n * Math.PI * 4;
@@ -210,13 +247,8 @@ export const FluidParticlesBackground = ({
 
     animate(); // Start the animation loop
 
-    const handleResize = () => {
-      resizeCanvas(); // Re-size canvas on window resize
-    };
-
-    window.addEventListener("resize", handleResize);
     return () => {
-      window.removeEventListener("resize", handleResize);
+      resizeObserver.disconnect();
       cancelAnimationFrame(animationFrameRef.current);
     };
   }, [particleCount, noiseIntensity, particleSize, noise]);

@@ -9,9 +9,9 @@ export default function FeatureCards() {
             <div className="absolute inset-0 z-0 pointer-events-none" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)' }}>
                 <FluidParticlesBackground particleCount={800} />
             </div>
-            
+
             <div className="mx-auto max-w-3xl lg:max-w-6xl px-6 relative z-10">
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
@@ -25,7 +25,7 @@ export default function FeatureCards() {
                 <div className="relative">
                     <div className="relative z-10 grid grid-cols-6 gap-6">
                         {/* Card 1: Accuracy */}
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 30 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true, margin: "-50px" }}
@@ -47,7 +47,7 @@ export default function FeatureCards() {
                         </motion.div>
 
                         {/* Card 2: Tree Health */}
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 30 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true, margin: "-50px" }}
@@ -83,7 +83,7 @@ export default function FeatureCards() {
                         </motion.div>
 
                         {/* Card 3: Speed/Fast Analysis */}
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 30 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true, margin: "-50px" }}
@@ -94,7 +94,7 @@ export default function FeatureCards() {
                                 <CardContent className="pt-6 flex flex-col h-full">
                                     <div className="pt-6 lg:px-6">
                                         <svg className="w-full text-white/5" viewBox="0 0 386 123" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <rect width="386" height="123" rx="10" fill="currentColor"/>
+                                            <rect width="386" height="123" rx="10" fill="currentColor" />
                                             <g clipPath="url(#clip0_0_106)">
                                                 <circle className="text-[#4ade80]/20" cx="29" cy="29" r="15" fill="currentColor" />
                                                 <path d="M29 23V35" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -122,7 +122,7 @@ export default function FeatureCards() {
                         </motion.div>
 
                         {/* Card 4: VRA Optimization */}
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 30 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true, margin: "-50px" }}
@@ -153,7 +153,7 @@ export default function FeatureCards() {
                         </motion.div>
 
                         {/* Card 5: Collaboration/Reporting */}
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 30 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true, margin: "-50px" }}
