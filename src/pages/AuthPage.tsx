@@ -5,36 +5,51 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Leaf, ArrowRight, Mail, Lock, User, Building2, ShieldCheck, Eye, EyeOff, CheckCircle2, Globe } from 'lucide-react';
+import { Leaf, ArrowRight, Mail, Lock, User, Building2, ShieldCheck, Eye, EyeOff, CheckCircle2, Globe, Clock, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function AuthPage() {
   const [authView, setAuthView] = useState<'login' | 'signup' | 'forgot'>('login');
-  const [accountType, setAccountType] = useState<'individual' | 'enterprise'>('individual');
+  const [signupStep, setSignupStep] = useState<1 | 2 | 3>(1);
+  const [accountType, setAccountType] = useState<'individual' | 'organization'>('individual');
+  const [orgChoice, setOrgChoice] = useState<'create' | 'join'>('create');
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [submitState, setSubmitState] = useState<null | 'success' | 'pending' | 'approved'>(null);
+  const [countdown, setCountdown] = useState(5);
   const navigate = useNavigate();
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // In a real application, the role would be determined by the backend response
-    // For this simulation, we use a mock rule (e.g., admin@nyawit.ai is admin)
     setTimeout(() => {
       setIsLoading(false);
-      setSuccess(true);
       
-      setTimeout(() => {
-        if (email === 'admin@nyawit.ai') {
+      if (authView === 'signup' && accountType === 'organization') {
+        if (orgChoice === 'create') {
           navigate('/admin');
         } else {
-          navigate('/dashboard');
+          setSubmitState('pending');
         }
-      }, 1000);
+      } else {
+        setSuccess(true);
+        setTimeout(() => {
+          if (email === 'admin@nyawit.ai') {
+            navigate('/admin');
+          } else {
+            navigate('/dashboard');
+          }
+        }, 1000);
+      }
     }, 1500);
   };
 
@@ -49,9 +64,20 @@ export default function AuthPage() {
 
   const resetAuthView = (view: 'login' | 'signup' | 'forgot') => {
     setAuthView(view);
+    setSignupStep(1);
+    setAccountType('individual');
+    setOrgChoice('create');
     setSuccess(false);
     setForgotSuccess(false);
     setIsLoading(false);
+    setSubmitState(null);
+    setCountdown(5);
+    setEmail('');
+    setFullName('');
+    setCompanyName('');
+    setInviteCode('');
+    setPassword('');
+    setConfirmPassword('');
   };
 
   return (
@@ -103,42 +129,146 @@ export default function AuthPage() {
         {/* Main Ivory Card */}
         <div className="bg-[#fcfbf7] rounded-[2.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.4)] overflow-hidden border border-white/20">
           <div className="p-8 md:p-14 lg:p-16">
-            <div className="mb-10 text-center">
-              <h2 className="text-4xl font-extrabold text-[#04211a] tracking-tight mb-3">
-                {authView === 'login' ? 'Welcome Back' : authView === 'signup' ? 'Create Your Account' : forgotSuccess ? 'Reset Link Sent' : 'Reset Your Password'}
-              </h2>
-              <p className="text-slate-500 font-medium">
-                {authView === 'login' 
-                  ? 'Access your plantation intelligence dashboard.' 
-                  : authView === 'signup' 
-                  ? 'Join the next generation of AI-powered plantation monitoring.'
-                  : forgotSuccess
-                  ? 'Please check your email and follow the instructions to reset your password.'
-                  : 'Enter your registered email address and we\'ll send you a secure password reset link.'}
-              </p>
-            </div>
+            {submitState === null && (
+              <div className="mb-10 text-center">
+                <h2 className="text-4xl font-extrabold text-[#04211a] tracking-tight mb-3">
+                  {authView === 'login' 
+                    ? 'Welcome Back' 
+                    : authView === 'forgot'
+                    ? (forgotSuccess ? 'Reset Link Sent' : 'Reset Your Password')
+                    : signupStep === 1
+                    ? 'Create Your Account'
+                    : accountType === 'individual'
+                    ? 'Personal Details'
+                    : orgChoice === 'create'
+                    ? 'New Organization'
+                    : 'Join Organization'
+                  }
+                </h2>
+                <p className="text-slate-500 font-medium text-sm leading-relaxed">
+                  {authView === 'login' 
+                    ? 'Access your plantation intelligence dashboard.' 
+                    : authView === 'forgot'
+                    ? (forgotSuccess 
+                        ? 'Please check your email and follow the instructions to reset your password.' 
+                        : 'Enter your email address and we\'ll send you a secure password reset link.')
+                    : signupStep === 1
+                    ? 'Join the next generation of AI-powered plantation monitoring.'
+                    : accountType === 'individual' 
+                    ? 'Enter your details to create your personal account.' 
+                    : orgChoice === 'create' 
+                    ? 'Create a new plantation workspace for your organization.' 
+                    : 'Enter your invite code to link your account to your company.'
+                  }
+                </p>
+              </div>
+            )}
 
-            {/* Premium Toggle Switch - Only show on Login/Signup */}
-            {authView !== 'forgot' && (
+            {/* Premium Toggle Switch - Only show on Login screen */}
+            {authView === 'login' && (
               <div className="flex p-1.5 bg-[#f0eee6] rounded-full mb-10 border border-[#e5e2d6]">
                 <button 
+                  type="button"
                   onClick={() => resetAuthView('login')}
-                  className={`flex-1 py-4 text-sm font-bold rounded-full transition-all duration-300 ${authView === 'login' ? 'bg-white text-[#04211a] shadow-lg' : 'text-slate-500 hover:text-[#04211a]'}`}
+                  className="flex-1 py-4 text-sm font-bold rounded-full transition-all duration-300 bg-white text-[#04211a] shadow-lg"
                 >
                   Sign In
                 </button>
                 <button 
+                  type="button"
                   onClick={() => resetAuthView('signup')}
-                  className={`flex-1 py-4 text-sm font-bold rounded-full transition-all duration-300 ${authView === 'signup' ? 'bg-white text-[#04211a] shadow-lg' : 'text-slate-500 hover:text-[#04211a]'}`}
+                  className="flex-1 py-4 text-sm font-bold rounded-full transition-all duration-300 text-slate-500 hover:text-[#04211a]"
                 >
                   Create Account
                 </button>
               </div>
             )}
 
-            {authView === 'forgot' ? (
-              <form onSubmit={handleForgotSubmit} className="space-y-6">
-                {!forgotSuccess ? (
+            <AnimatePresence mode="wait">
+              {authView === 'forgot' ? (
+                <motion.form 
+                  key="forgot"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                  onSubmit={handleForgotSubmit} 
+                  className="space-y-6"
+                >
+                  {!forgotSuccess ? (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                        <Mail className="w-3.5 h-3.5 opacity-40" />
+                        Email Address
+                      </label>
+                      <input 
+                        required
+                        type="email" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="your@email.com"
+                        className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
+                      />
+                    </div>
+                  ) : null}
+
+                  {!forgotSuccess ? (
+                    <button 
+                      disabled={isLoading}
+                      type="submit"
+                      className="w-full py-6 rounded-2xl font-extrabold text-lg shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all flex items-center justify-center gap-3 active:scale-[0.98] bg-[#04211a] text-white hover:bg-emerald-950 hover:-translate-y-0.5 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          Send Reset Link
+                          <ArrowRight className="w-5 h-5" />
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="space-y-4">
+                      <button 
+                        type="button"
+                        onClick={() => setForgotSuccess(false)}
+                        className="w-full py-4 text-emerald-600 font-extrabold flex justify-center items-center gap-2 hover:bg-emerald-50 rounded-2xl transition-all"
+                      >
+                        Resend Email
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => resetAuthView('login')}
+                        className="w-full py-6 rounded-2xl font-extrabold text-lg shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all flex items-center justify-center gap-3 active:scale-[0.98] bg-[#04211a] text-white hover:bg-emerald-950 hover:-translate-y-0.5"
+                      >
+                        Back to Sign In
+                      </button>
+                    </div>
+                  )}
+                  
+                  {!forgotSuccess && (
+                    <button 
+                      type="button"
+                      onClick={() => resetAuthView('login')}
+                      className="w-full py-4 text-slate-500 font-extrabold flex justify-center items-center gap-2 hover:bg-slate-100 rounded-2xl transition-all mt-4"
+                    >
+                      Back to Sign In
+                    </button>
+                  )}
+                </motion.form>
+              ) : authView === 'login' ? (
+                <motion.form 
+                  key="login"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                  onSubmit={handleAuth} 
+                  className="space-y-6"
+                >
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
                       <Mail className="w-3.5 h-3.5 opacity-40" />
@@ -153,168 +283,13 @@ export default function AuthPage() {
                       className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
                     />
                   </div>
-                ) : null}
 
-                {!forgotSuccess ? (
-                  <button 
-                    disabled={isLoading}
-                    type="submit"
-                    className={`w-full py-6 rounded-2xl font-extrabold text-lg shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all flex items-center justify-center gap-3 active:scale-[0.98] bg-[#04211a] text-white hover:bg-emerald-950 hover:-translate-y-0.5 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed`}
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        Send Reset Link
-                        <ArrowRight className="w-5 h-5" />
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <div className="space-y-4">
-                    <button 
-                      type="button"
-                      onClick={() => setForgotSuccess(false)}
-                      className="w-full py-4 text-emerald-600 font-extrabold flex justify-center items-center gap-2 hover:bg-emerald-50 rounded-2xl transition-all"
-                    >
-                      Resend Email
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => resetAuthView('login')}
-                      className={`w-full py-6 rounded-2xl font-extrabold text-lg shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all flex items-center justify-center gap-3 active:scale-[0.98] bg-[#04211a] text-white hover:bg-emerald-950 hover:-translate-y-0.5`}
-                    >
-                      Back to Sign In
-                    </button>
-                  </div>
-                )}
-                
-                {!forgotSuccess && (
-                  <button 
-                    type="button"
-                    onClick={() => resetAuthView('login')}
-                    className="w-full py-4 text-slate-500 font-extrabold flex justify-center items-center gap-2 hover:bg-slate-100 rounded-2xl transition-all mt-4"
-                  >
-                    Back to Sign In
-                  </button>
-                )}
-              </form>
-            ) : (
-              <form onSubmit={handleAuth} className="space-y-6">
-                <AnimatePresence mode="wait">
-                  {authView === 'signup' && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-6 overflow-hidden pb-1"
-                    >
-                      {/* Account Type Selector */}
-                      <div className="grid grid-cols-2 gap-2 p-2 bg-[#f0eee6]/60 rounded-2xl border border-[#e5e2d6]/50">
-                        <button 
-                          type="button"
-                          onClick={() => setAccountType('individual')}
-                          className={`flex flex-col items-start p-4 text-left rounded-xl transition-all duration-300 ${
-                            accountType === 'individual' 
-                              ? 'bg-white shadow-[0_8px_20px_rgba(4,33,26,0.08)] border border-emerald-100 scale-[1.02]' 
-                              : 'bg-transparent hover:bg-black/5 border border-transparent opacity-70 hover:opacity-100 scale-100'
-                          }`}
-                        >
-                          <span className={`text-sm font-extrabold mb-1 ${accountType === 'individual' ? 'text-[#04211a]' : 'text-slate-600'}`}>
-                            Individual
-                          </span>
-                          <span className={`text-[11px] leading-relaxed font-medium ${accountType === 'individual' ? 'text-slate-500' : 'text-slate-400'}`}>
-                            For personal or trial account.
-                          </span>
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => setAccountType('enterprise')}
-                          className={`flex flex-col items-start p-4 text-left rounded-xl transition-all duration-300 ${
-                            accountType === 'enterprise' 
-                              ? 'bg-white shadow-[0_8px_20px_rgba(4,33,26,0.08)] border border-emerald-100 scale-[1.02]' 
-                              : 'bg-transparent hover:bg-black/5 border border-transparent opacity-70 hover:opacity-100 scale-100'
-                          }`}
-                        >
-                          <span className={`text-sm font-extrabold mb-1 ${accountType === 'enterprise' ? 'text-[#04211a]' : 'text-slate-600'}`}>
-                            Enterprise / Organization
-                          </span>
-                          <span className={`text-[11px] leading-relaxed font-medium ${accountType === 'enterprise' ? 'text-slate-500' : 'text-slate-400'}`}>
-                            For team or company account.
-                          </span>
-                        </button>
-                      </div>
-
-                      <div className="flex flex-col md:flex-row">
-                        {/* Full Name */}
-                        <div 
-                          className={`space-y-2 transition-all duration-300 ease-out ${
-                            accountType === 'enterprise' ? 'w-full md:w-[calc(50%-10px)]' : 'w-full'
-                          }`}
-                        >
-                          <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
-                            <User className="w-3.5 h-3.5 opacity-40" />
-                            Full Name
-                          </label>
-                          <input 
-                            required
-                            type="text" 
-                            placeholder="Elizabeth Warren"
-                            className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
-                          />
-                        </div>
-
-                        {/* Company Name (Smooth Fluid Transition Container) */}
-                        <div 
-                          className={`space-y-2 transition-all duration-300 ease-out overflow-hidden ${
-                            accountType === 'enterprise' 
-                              ? 'w-full md:w-[calc(50%-10px)] opacity-100 max-h-[150px] mt-5 md:mt-0 md:ml-5' 
-                              : 'w-0 opacity-0 max-h-0 md:max-h-[150px] mt-0 md:mt-0 md:ml-0 pointer-events-none'
-                          }`}
-                        >
-                          <div className="min-w-[200px]">
-                            <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
-                              <Building2 className="w-3.5 h-3.5 opacity-40" />
-                              Company Name
-                            </label>
-                            <input 
-                              required={accountType === 'enterprise'}
-                              type="text" 
-                              placeholder="Sumatra Agri"
-                              className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
-                    <Mail className="w-3.5 h-3.5 opacity-40" />
-                    Email Address
-                  </label>
-                  <input 
-                    required
-                    type="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between px-1">
-                    <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2">
-                      <Lock className="w-3.5 h-3.5 opacity-40" />
-                      Password
-                    </label>
-                    {authView === 'login' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2">
+                        <Lock className="w-3.5 h-3.5 opacity-40" />
+                        Password
+                      </label>
                       <button 
                         type="button" 
                         onClick={() => resetAuthView('forgot')}
@@ -322,90 +297,563 @@ export default function AuthPage() {
                       >
                         Forgot Password?
                       </button>
-                    )}
+                    </div>
+                    <div className="relative">
+                      <input 
+                        required
+                        type={showPassword ? 'text' : 'password'} 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium pr-14 placeholder:opacity-30"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#04211a] p-1 transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="relative">
+
+                  <div className="flex items-center gap-3 pt-2">
                     <input 
-                      required
-                      minLength={authView === 'signup' ? 8 : undefined}
-                      type={showPassword ? 'text' : 'password'} 
-                      placeholder="••••••••"
-                      className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium pr-14 placeholder:opacity-30"
+                      type="checkbox" 
+                      id="remember" 
+                      className="w-5 h-5 rounded-md border-[#e5e2d6] text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
                     />
+                    <label htmlFor="remember" className="text-sm font-medium text-slate-500 cursor-pointer select-none">
+                      Keep me signed in
+                    </label>
+                  </div>
+
+                  <button 
+                    disabled={isLoading || success}
+                    type="submit"
+                    className="w-full py-6 rounded-2xl font-extrabold text-lg shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all flex items-center justify-center gap-3 active:scale-[0.98] bg-[#04211a] text-white hover:bg-emerald-950 hover:-translate-y-0.5 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? (
+                      <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : success ? (
+                      <>
+                        <CheckCircle2 className="w-6 h-6" />
+                        Redirecting...
+                      </>
+                    ) : (
+                      <>
+                        Access Dashboard
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
+                  </button>
+                </motion.form>
+              ) : submitState !== null ? (
+                <motion.div
+                  key={`submit-state-${submitState}`}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-8 text-center"
+                >
+                  {/* SUCCESS STATE (Create Org Success) */}
+                  {submitState === 'success' && (
+                    <div className="space-y-6 py-4">
+                      <div className="flex justify-center">
+                        <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 shadow-[0_0_50px_rgba(16,185,129,0.15)] animate-pulse">
+                          <CheckCircle2 className="w-12 h-12" />
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <h2 className="text-3xl font-extrabold text-[#04211a] tracking-tight">Organization Created</h2>
+                        <p className="text-emerald-600/90 font-semibold text-sm">
+                          Your organization has been created successfully.
+                        </p>
+                        <p className="text-slate-500 font-medium text-sm leading-relaxed max-w-md mx-auto">
+                          You are now the first admin of this workspace. Creating your dashboard access automatically...
+                        </p>
+                      </div>
+                      
+                      <div className="pt-6">
+                        <div className="inline-flex items-center gap-3 bg-[#f0eee6] border border-[#e5e2d6] px-5 py-2.5 rounded-full text-xs font-bold text-slate-600">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                          Redirecting to admin dashboard in {countdown} seconds...
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PENDING STATE (Join Org Pending) */}
+                  {submitState === 'pending' && (
+                    <div className="space-y-6 py-2 text-center">
+                      <div className="flex flex-col items-center space-y-4">
+                        <div className="w-20 h-20 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-600 relative">
+                          <div className="absolute inset-0 rounded-full border-2 border-teal-500/30 animate-[ping_3s_infinite_ease-in-out]" />
+                          <Clock className="w-10 h-10 animate-[spin_10s_infinite_linear]" />
+                        </div>
+                        <div className="space-y-2">
+                          <h2 className="text-3xl font-extrabold text-[#04211a] tracking-tight">Approval Pending</h2>
+                          <p className="text-teal-600 font-bold text-sm uppercase tracking-wider">
+                            Your request has been sent successfully.
+                          </p>
+                          <p className="text-slate-500 font-semibold text-sm max-w-md mx-auto leading-relaxed">
+                            Waiting for approval from an administrator to access this organization's workspace.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Simple Email Indicator */}
+                      <div className="bg-[#f0eee6]/60 border border-[#e5e2d6]/60 rounded-2xl p-4 text-xs font-bold text-slate-500">
+                        Notification sent to:{' '}
+                        <span className="text-[#04211a] font-extrabold">{email || 'your@email.com'}</span>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="pt-4">
+                        <button
+                          type="button"
+                          onClick={() => setSubmitState('approved')}
+                          className="w-full py-5 rounded-2xl font-extrabold text-base bg-[#04211a] text-white hover:bg-emerald-950 transition-all flex items-center justify-center gap-2 active:scale-[0.98] shadow-md cursor-pointer"
+                        >
+                          <RefreshCw className="w-5 h-5 animate-[spin_4s_infinite_linear]" />
+                          Refresh Status
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* APPROVED STATE (Join Org Approved) */}
+                  {submitState === 'approved' && (
+                    <div className="space-y-6 py-6">
+                      <div className="flex justify-center">
+                        <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 shadow-[0_0_50px_rgba(16,185,129,0.15)] animate-[bounce_2s_infinite]">
+                          <ShieldCheck className="w-12 h-12" />
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <h2 className="text-3xl font-extrabold text-[#04211a] tracking-tight">Access Approved</h2>
+                        <p className="text-emerald-600/90 font-bold text-sm">
+                          Your access has been approved.
+                        </p>
+                        <p className="text-slate-500 font-medium text-sm leading-relaxed max-w-sm mx-auto">
+                          You can now sign in to Nyawit AI and access your organization's workspace.
+                        </p>
+                      </div>
+                      
+                      <div className="pt-6">
+                        <button
+                          type="button"
+                          onClick={() => resetAuthView('login')}
+                          className="w-full py-5 rounded-2xl font-extrabold text-lg bg-[#04211a] hover:bg-emerald-950 text-white transition-all flex items-center justify-center gap-2 active:scale-[0.98] shadow-md"
+                        >
+                          Sign In
+                          <ArrowRight className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.form 
+                  key={`signup-step-${signupStep}`}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.25 }}
+                  onSubmit={handleAuth} 
+                  className="space-y-6"
+                >
+                  {/* STEP 1: Account Type Selection */}
+                  {signupStep === 1 && (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setAccountType('individual')}
+                          className={`flex flex-col items-start p-6 text-left rounded-2xl border-2 transition-all duration-300 ${
+                            accountType === 'individual'
+                              ? 'bg-white border-[#04211a] shadow-[0_8px_30px_rgba(4,33,26,0.08)] scale-[1.02]'
+                              : 'bg-white/40 border-[#e5e2d6]/60 hover:border-[#e5e2d6] opacity-75'
+                          }`}
+                        >
+                          <div className={`p-3 rounded-xl mb-4 ${accountType === 'individual' ? 'bg-[#04211a] text-white' : 'bg-[#f0eee6] text-[#04211a]/60'}`}>
+                            <User className="w-5 h-5" />
+                          </div>
+                          <span className="text-base font-extrabold text-[#04211a] mb-1">Individual / Personal</span>
+                          <span className="text-[11px] leading-relaxed text-slate-500 font-medium">For personal use or trial access</span>
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => setAccountType('organization')}
+                          className={`flex flex-col items-start p-6 text-left rounded-2xl border-2 transition-all duration-300 ${
+                            accountType === 'organization'
+                              ? 'bg-white border-[#04211a] shadow-[0_8px_30px_rgba(4,33,26,0.08)] scale-[1.02]'
+                              : 'bg-white/40 border-[#e5e2d6]/60 hover:border-[#e5e2d6] opacity-75'
+                          }`}
+                        >
+                          <div className={`p-3 rounded-xl mb-4 ${accountType === 'organization' ? 'bg-[#04211a] text-white' : 'bg-[#f0eee6] text-[#04211a]/60'}`}>
+                            <Building2 className="w-5 h-5" />
+                          </div>
+                          <span className="text-base font-extrabold text-[#04211a] mb-1">Organization / Team</span>
+                          <span className="text-[11px] leading-relaxed text-slate-500 font-medium">For plantation companies and team collaboration</span>
+                        </button>
+                      </div>
+
+                      <div className="flex gap-4 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => resetAuthView('login')}
+                          className="flex-1 py-5 rounded-2xl font-extrabold text-slate-500 border-2 border-[#e5e2d6] hover:bg-slate-100 transition-all active:scale-[0.98] text-center text-base"
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSignupStep(2)}
+                          className="flex-1 py-5 bg-[#04211a] text-white hover:bg-emerald-950 rounded-2xl font-extrabold text-lg shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                        >
+                          Continue
+                          <ArrowRight className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 2 (INDIVIDUAL): Personal signup form */}
+                  {signupStep === 2 && accountType === 'individual' && (
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                          <User className="w-3.5 h-3.5 opacity-40" />
+                          Full Name
+                        </label>
+                        <input 
+                          required
+                          type="text" 
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="Elizabeth Warren"
+                          className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                          <Mail className="w-3.5 h-3.5 opacity-40" />
+                          Email Address
+                        </label>
+                        <input 
+                          required
+                          type="email" 
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="your@email.com"
+                          className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                          <Lock className="w-3.5 h-3.5 opacity-40" />
+                          Password
+                        </label>
+                        <div className="relative">
+                          <input 
+                            required
+                            minLength={8}
+                            type={showPassword ? 'text' : 'password'} 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium pr-14 placeholder:opacity-30"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#04211a] p-1 transition-colors"
+                          >
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                          <Lock className="w-3.5 h-3.5 opacity-40" />
+                          Confirm Password
+                        </label>
+                        <input 
+                          required
+                          minLength={8}
+                          type="password" 
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-2">
+                        <input 
+                          type="checkbox" 
+                          id="terms-indiv" 
+                          className="w-5 h-5 rounded-md border-[#e5e2d6] text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+                          required
+                        />
+                        <label htmlFor="terms-indiv" className="text-sm font-medium text-slate-500 cursor-pointer select-none">
+                          I agree to the Terms and Privacy Policy
+                        </label>
+                      </div>
+
+                      <div className="flex gap-4 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => setSignupStep(1)}
+                          className="flex-1 py-5 rounded-2xl font-extrabold text-slate-500 border-2 border-[#e5e2d6] hover:bg-slate-100 transition-all active:scale-[0.98] text-center text-base"
+                        >
+                          Back
+                        </button>
+                        <button
+                          disabled={isLoading}
+                          type="submit"
+                          className="flex-1 py-5 bg-[#04211a] text-white hover:bg-emerald-950 rounded-2xl font-extrabold text-lg shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-75 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              Create Account
+                              <ArrowRight className="w-5 h-5" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 2 (ORGANIZATION): Choose Organization Mode */}
+                  {signupStep === 2 && accountType === 'organization' && (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setOrgChoice('create')}
+                          className={`flex flex-col items-start p-6 text-left rounded-2xl border-2 transition-all duration-300 ${
+                            orgChoice === 'create'
+                              ? 'bg-white border-[#04211a] shadow-[0_8px_30px_rgba(4,33,26,0.08)] scale-[1.02]'
+                              : 'bg-white/40 border-[#e5e2d6]/60 hover:border-[#e5e2d6] opacity-75'
+                          }`}
+                        >
+                          <div className={`p-3 rounded-xl mb-4 ${orgChoice === 'create' ? 'bg-[#04211a] text-white' : 'bg-[#f0eee6] text-[#04211a]/60'}`}>
+                            <Globe className="w-5 h-5" />
+                          </div>
+                          <span className="text-base font-extrabold text-[#04211a] mb-1">Create Organization</span>
+                          <span className="text-[11px] leading-relaxed text-slate-500 font-medium">Create a new plantation workspace for your organization.</span>
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => setOrgChoice('join')}
+                          className={`flex flex-col items-start p-6 text-left rounded-2xl border-2 transition-all duration-300 ${
+                            orgChoice === 'join'
+                              ? 'bg-white border-[#04211a] shadow-[0_8px_30px_rgba(4,33,26,0.08)] scale-[1.02]'
+                              : 'bg-white/40 border-[#e5e2d6]/60 hover:border-[#e5e2d6] opacity-75'
+                          }`}
+                        >
+                          <div className={`p-3 rounded-xl mb-4 ${orgChoice === 'join' ? 'bg-[#04211a] text-white' : 'bg-[#f0eee6] text-[#04211a]/60'}`}>
+                            <Building2 className="w-5 h-5" />
+                          </div>
+                          <span className="text-base font-extrabold text-[#04211a] mb-1">Join Organization</span>
+                          <span className="text-[11px] leading-relaxed text-slate-500 font-medium">Use an invite code to join an existing workspace.</span>
+                        </button>
+                      </div>
+
+                      <div className="flex gap-4 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => setSignupStep(1)}
+                          className="flex-1 py-5 rounded-2xl font-extrabold text-slate-500 border-2 border-[#e5e2d6] hover:bg-slate-100 transition-all active:scale-[0.98] text-center text-base"
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSignupStep(3)}
+                          className="flex-1 py-5 bg-[#04211a] text-white hover:bg-emerald-950 rounded-2xl font-extrabold text-lg shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                        >
+                          Continue
+                          <ArrowRight className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3 (ORGANIZATION): Show matching form */}
+                  {signupStep === 3 && accountType === 'organization' && (
+                    <div className="space-y-6">
+                      {orgChoice === 'create' ? (
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                            <Building2 className="w-3.5 h-3.5 opacity-40" />
+                            Company Name
+                          </label>
+                          <input 
+                            required
+                            type="text" 
+                            value={companyName}
+                            onChange={(e) => setCompanyName(e.target.value)}
+                            placeholder="Sumatra Agri Co."
+                            className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
+                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                            <ShieldCheck className="w-3.5 h-3.5 opacity-40" />
+                            Invite Code
+                          </label>
+                          <input 
+                            required
+                            type="text" 
+                            value={inviteCode}
+                            onChange={(e) => setInviteCode(e.target.value)}
+                            placeholder="NYA-123-XYZ"
+                            className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
+                          />
+                        </div>
+                      )}
+
+                      {/* Full Name */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                          <User className="w-3.5 h-3.5 opacity-40" />
+                          Full Name
+                        </label>
+                        <input 
+                          required
+                          type="text" 
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="Elizabeth Warren"
+                          className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
+                        />
+                      </div>
+
+                      {/* Email Address */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                          <Mail className="w-3.5 h-3.5 opacity-40" />
+                          Email Address
+                        </label>
+                        <input 
+                          required
+                          type="email" 
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="your@email.com"
+                          className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
+                        />
+                      </div>
+
+                      {/* Password */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                          <Lock className="w-3.5 h-3.5 opacity-40" />
+                          Password
+                        </label>
+                        <div className="relative">
+                          <input 
+                            required
+                            minLength={8}
+                            type={showPassword ? 'text' : 'password'} 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium pr-14 placeholder:opacity-30"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#04211a] p-1 transition-colors"
+                          >
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Confirm Password */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
+                          <Lock className="w-3.5 h-3.5 opacity-40" />
+                          Confirm Password
+                        </label>
+                        <input 
+                          required
+                          minLength={8}
+                          type="password" 
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
+                        />
+                      </div>
+
+                      {/* Terms */}
+                      <div className="flex items-center gap-3 pt-2">
+                        <input 
+                          type="checkbox" 
+                          id="terms-org" 
+                          className="w-5 h-5 rounded-md border-[#e5e2d6] text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+                          required
+                        />
+                        <label htmlFor="terms-org" className="text-sm font-medium text-slate-500 cursor-pointer select-none">
+                          I agree to the Terms and Privacy Policy
+                        </label>
+                      </div>
+
+                      {/* Navigation buttons */}
+                      <div className="flex gap-4 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => setSignupStep(2)}
+                          className="flex-1 py-5 rounded-2xl font-extrabold text-slate-500 border-2 border-[#e5e2d6] hover:bg-slate-100 transition-all active:scale-[0.98] text-center text-base"
+                        >
+                          Back
+                        </button>
+                        <button
+                          disabled={isLoading}
+                          type="submit"
+                          className="flex-1 py-5 bg-[#04211a] text-white hover:bg-emerald-950 rounded-2xl font-extrabold text-lg shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-75 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              {orgChoice === 'create' ? 'Create Organization' : 'Join Organization'}
+                              <ArrowRight className="w-5 h-5" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Secondary Sign-In Redirect link for wizard steps */}
+                  <p className="mt-8 text-center text-slate-500 font-semibold text-sm">
+                    Already have an account?
                     <button 
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#04211a] p-1 transition-colors"
+                      onClick={() => resetAuthView('login')}
+                      className="ml-2 text-teal-600 font-extrabold hover:text-teal-700 underline underline-offset-4 decoration-2"
                     >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      Sign In
                     </button>
-                  </div>
-                </div>
-
-                {authView === 'signup' && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
-                      <Lock className="w-3.5 h-3.5 opacity-40" />
-                      Confirm Password
-                    </label>
-                    <input 
-                      required
-                      minLength={authView === 'signup' ? 8 : undefined}
-                      type="password" 
-                      placeholder="••••••••"
-                      className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium placeholder:opacity-30"
-                    />
-                  </div>
-                )}
-
-              <div className="flex items-center gap-3 pt-2">
-                <input 
-                  type="checkbox" 
-                  id="terms" 
-                  className="w-5 h-5 rounded-md border-[#e5e2d6] text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
-                  required
-                />
-                <label htmlFor="terms" className="text-sm font-medium text-slate-500 cursor-pointer select-none">
-                  {authView === 'login' ? 'Keep me signed in' : 'I agree to the Terms and Privacy Policy'}
-                </label>
-              </div>
-
-              <button 
-                disabled={isLoading || success}
-                className={`w-full py-6 rounded-2xl font-extrabold text-lg shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all flex items-center justify-center gap-3 active:scale-[0.98] ${
-                  success 
-                    ? 'bg-emerald-500 text-white cursor-default' 
-                    : 'bg-[#04211a] text-white hover:bg-emerald-950 hover:-translate-y-0.5'
-                }`}
-              >
-                {isLoading ? (
-                  <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : success ? (
-                  <>
-                    <CheckCircle2 className="w-6 h-6" />
-                    Redirecting...
-                  </>
-                ) : (
-                  <>
-                    {authView === 'login' ? 'Access Dashboard' : 'Create Account'}
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
-              </button>
-            </form>
-            )}
-
-            {authView !== 'forgot' && (
-              <p className="mt-10 text-center text-slate-500 font-medium">
-                {authView === 'login' ? "Don't have an account?" : "Already have an account?"}
-                <button 
-                  onClick={() => resetAuthView(authView === 'login' ? 'signup' : 'login')}
-                  className="ml-2 text-teal-600 font-extrabold hover:text-teal-700 underline underline-offset-4 decoration-2"
-                >
-                  {authView === 'login' ? 'Create Account' : 'Sign In'}
-                </button>
-              </p>
-            )}
+                  </p>
+                </motion.form>
+              )}
+            </AnimatePresence>
 
             {/* Subtle Security Badge */}
             <div className="mt-10 pt-8 border-t border-[#e5e2d6] flex justify-center">
