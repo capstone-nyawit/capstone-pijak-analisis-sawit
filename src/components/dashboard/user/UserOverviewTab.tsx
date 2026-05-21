@@ -3,10 +3,12 @@
  * Displays live detection bounding boxes, KPIs, priority zones, risk heatmap, and recent inference history.
  */
 
-import { motion } from 'motion/react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sprout, Leaf, Activity, CheckCircle2, ArrowUpRight, ArrowDownRight, 
-  AlertTriangle, Map, PlaySquare, MapPin 
+  AlertTriangle, Map, PlaySquare, MapPin, Maximize2, X
 } from 'lucide-react';
 
 interface Log {
@@ -41,6 +43,18 @@ const riskHeatmap = [
 ];
 
 export default function UserOverviewTab({ logs, stats, setActiveTab, triggerNewAnalysis }: UserOverviewTabProps) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    };
+    if (isFullscreen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+
   if (logs.length === 0) {
     return (
       <motion.div
@@ -86,13 +100,14 @@ export default function UserOverviewTab({ logs, stats, setActiveTab, triggerNewA
       >
         <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-black/80 to-transparent z-10 pointer-events-none"></div>
         
-        <div className="relative flex-1 min-h-[500px] overflow-hidden group">
+        <div className="relative flex-1 min-h-[600px] overflow-hidden group">
           {/* Simulated Aerial Image */}
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1627883907153-61b453e00cc2?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center mix-blend-luminosity opacity-90 transition-transform duration-1000 group-hover:scale-105"></div>
           <div className="absolute inset-0 bg-[#04211a]/20"></div>
 
           {/* Top Header / Metadata */}
-          <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-20">
+          <div className="absolute top-6 left-6 right-6 flex flex-col gap-4 z-20">
+            <div className="flex justify-between items-start">
             <div className="flex items-center gap-4">
               <div className="bg-white/10 backdrop-blur-md border border-white/20 p-3 rounded-2xl flex items-center gap-3">
                 <Activity className="w-6 h-6 text-emerald-400" />
@@ -114,27 +129,28 @@ export default function UserOverviewTab({ logs, stats, setActiveTab, triggerNewA
               </div>
             </div>
 
-            <div className="bg-black/70 backdrop-blur-lg border border-white/10 rounded-2xl p-4 hidden md:block w-48 shadow-2xl">
-               <div className="flex justify-between items-center mb-3">
-                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Model</span>
-                 <span className="text-xs text-white font-mono font-bold">Nyawit-v4</span>
-               </div>
-               <div className="space-y-2">
-                 <div className="flex justify-between items-center">
-                   <div className="flex items-center gap-2">
-                     <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
-                     <span className="text-xs text-slate-300 font-medium">Healthy</span>
-                   </div>
-                   <span className="text-xs text-white font-bold">84%</span>
+              <div className="bg-black/70 backdrop-blur-lg border border-white/10 rounded-2xl p-4 hidden md:block w-48 shadow-2xl">
+                 <div className="flex justify-between items-center mb-3">
+                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Model</span>
+                   <span className="text-xs text-white font-mono font-bold">Nyawit-v4</span>
                  </div>
-                 <div className="flex justify-between items-center">
-                   <div className="flex items-center gap-2">
-                     <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
-                     <span className="text-xs text-slate-300 font-medium">Yellowing</span>
+                 <div className="space-y-2">
+                   <div className="flex justify-between items-center">
+                     <div className="flex items-center gap-2">
+                       <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                       <span className="text-xs text-slate-300 font-medium">Healthy</span>
+                     </div>
+                     <span className="text-xs text-white font-bold">84%</span>
                    </div>
-                   <span className="text-xs text-white font-bold">12%</span>
+                   <div className="flex justify-between items-center">
+                     <div className="flex items-center gap-2">
+                       <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
+                       <span className="text-xs text-slate-300 font-medium">Yellowing</span>
+                     </div>
+                     <span className="text-xs text-white font-bold">12%</span>
+                   </div>
                  </div>
-               </div>
+              </div>
             </div>
           </div>
 
@@ -159,15 +175,11 @@ export default function UserOverviewTab({ logs, stats, setActiveTab, triggerNewA
 
           <div className="absolute bottom-6 right-6 z-20 flex gap-3">
             <button 
-              onClick={triggerNewAnalysis}
-              className="bg-emerald-500 text-[#04211a] px-5 py-2.5 rounded-xl text-sm font-extrabold shadow-[0_10px_25px_rgba(0,0,0,0.3)] hover:bg-emerald-400 hover:scale-105 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              onClick={() => setIsFullscreen(true)}
+              title="Full Image Preview"
+              className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white/90 hover:bg-black/40 hover:text-white hover:scale-110 transition-all flex items-center justify-center cursor-pointer active:scale-95 border border-white/10"
             >
-              <PlaySquare className="w-4 h-4 text-[#04211a]" />
-              Mulai Analisis Baru
-            </button>
-            <button className="bg-white/95 backdrop-blur text-[#04211a] px-5 py-2.5 rounded-xl text-sm font-bold shadow-[0_10px_25px_rgba(0,0,0,0.3)] hover:bg-white hover:scale-105 transition-all flex items-center gap-2">
-              <PlaySquare className="w-4 h-4 text-emerald-600" />
-              View Interactive Map
+              <Maximize2 className="w-6 h-6 drop-shadow-md" />
             </button>
           </div>
         </div>
@@ -381,6 +393,38 @@ export default function UserOverviewTab({ logs, stats, setActiveTab, triggerNewA
         </motion.div>
 
       </div>
+
+      {createPortal(
+        <AnimatePresence>
+          {isFullscreen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 md:p-12"
+              onClick={() => setIsFullscreen(false)}
+            >
+              <button 
+                className="absolute top-6 right-6 text-white/70 hover:text-white bg-black/50 p-2 rounded-full transition-all hover:scale-110"
+                onClick={(e) => { e.stopPropagation(); setIsFullscreen(false); }}
+              >
+                <X className="w-8 h-8" />
+              </button>
+              <motion.img 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                src={logs[0].thumb} 
+                alt="Fullscreen Preview" 
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </motion.div>
   );
 }

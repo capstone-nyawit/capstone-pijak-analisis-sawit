@@ -50,7 +50,7 @@ export default function InferenceTab({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e5e2d6] pb-6">
             <div>
               <h2 className="text-3xl font-black text-[#04211a] tracking-tight">Mulai Analisis Kebun</h2>
-              <p className="text-slate-500 font-semibold mt-1">Unggah citra drone untuk menjalankan deteksi dan analisis kondisi pohon sawit.</p>
+              <p className="text-slate-500 font-semibold mt-1">Unggah gambar kebun untuk menjalankan deteksi dan analisis kondisi pohon sawit.</p>
             </div>
             <button 
               onClick={() => setActiveTab('Overview')}
@@ -60,12 +60,13 @@ export default function InferenceTab({
             </button>
           </div>
 
-          <div className="max-w-2xl mx-auto space-y-6 pt-6">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 pt-6">
             
+            <div className="space-y-6 lg:col-span-2">
             {/* Upload Card */}
             <div className="bg-white border border-[#e5e2d6] rounded-[2rem] p-6 md:p-8 shadow-sm space-y-6">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">Citra Udara UAV</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">Pilih Gambar Citra Kebun</span>
                 {image && (
                   <span className="text-[10px] font-bold text-slate-400">Dimensi Optimal Terbaca</span>
                 )}
@@ -81,10 +82,10 @@ export default function InferenceTab({
               >
                 {image ? (
                   <>
-                    <img src={image} className="absolute inset-0 w-full h-full object-cover" alt="Preview UAV" />
+                    <img src={image} className="absolute inset-0 w-full h-full object-cover" alt="Preview Gambar" />
                     <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <RefreshCcw className="text-white w-10 h-10 mb-2 animate-spin-hover" />
-                      <span className="text-white font-bold text-sm">Ganti Gambar UAV</span>
+                      <span className="text-white font-bold text-sm">Ganti Gambar</span>
                     </div>
                   </>
                 ) : (
@@ -93,7 +94,7 @@ export default function InferenceTab({
                       <Upload className="text-[#04211a] w-8 h-8 opacity-80" />
                     </div>
                     <div>
-                      <p className="text-[#04211a] font-extrabold text-base">Klik atau seret citra drone di sini</p>
+                      <p className="text-[#04211a] font-extrabold text-base">Klik atau seret gambar kebun di sini</p>
                       <p className="text-slate-400 text-xs mt-1.5 font-medium">PNG, JPG, WEBP • Resolusi Maksimal 20MB</p>
                     </div>
                   </div>
@@ -120,7 +121,7 @@ export default function InferenceTab({
                         <ImageIcon className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-xs font-bold text-[#04211a] block truncate">uav_orthomosaic_snapshot.png</span>
+                        <span className="text-xs font-bold text-[#04211a] block truncate">citra_kebun_contoh.png</span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Format: PNG • Ready</span>
                       </div>
                     </div>
@@ -132,31 +133,40 @@ export default function InferenceTab({
               )}
             </div>
 
-            {/* Operational Tips */}
-            <div className="bg-[#faf8f0] border border-[#e5e2d6] rounded-[2rem] p-6 shadow-sm space-y-4">
-              <h3 className="text-xs font-black uppercase tracking-widest text-emerald-800 flex items-center gap-1.5">
-                <Leaf className="w-4 h-4 text-emerald-600" />
-                Tips Hasil Optimal
+            </div>
+
+            <div className="space-y-6 lg:col-span-1">
+            {/* Image Quality Guidance */}
+            <div className="bg-[#faf8f0]/80 border border-[#e5e2d6] rounded-[2rem] p-6 shadow-sm space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-widest text-emerald-800 flex items-center gap-1.5 mb-3">
+                <ImageIcon className="w-4 h-4 text-emerald-600" />
+                Panduan Upload Gambar
               </h3>
               
-              <ul className="space-y-3.5 text-[10px] font-semibold text-slate-600 leading-relaxed list-none">
-                <li className="flex gap-2">
-                  <span className="text-emerald-600 text-xs mt-0.5">▪</span>
-                  Pastikan citra diambil tegak lurus (nadir snapshot) untuk kalkulasi radius mahkota yang akurat.
+              <ul className="space-y-3.5 text-[11px] font-medium text-slate-600">
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong className="text-[#04211a]">Posisi:</strong> Usahakan gambar diambil tepat dari atas kanopi pohon.</span>
                 </li>
-                <li className="flex gap-2">
-                  <span className="text-emerald-600 text-xs mt-0.5">▪</span>
-                  Gunakan pencahayaan optimal (pukul 10:00 - 14:00) untuk meminimalkan distorsi bayangan pelepah sawit.
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong className="text-[#04211a]">Pencahayaan:</strong> Pastikan gambar terang dan tidak terlalu gelap.</span>
                 </li>
-                <li className="flex gap-2">
-                  <span className="text-emerald-600 text-xs mt-0.5">▪</span>
-                  Hindari snapshot citra yang tertutup awan atau kabut tebal guna memastikan indeks klorofil terbaca sempurna.
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong className="text-[#04211a]">Kualitas:</strong> Gunakan resolusi tinggi, hindari blur atau terlalu jauh.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong className="text-[#04211a]">Kejelasan:</strong> Pastikan objek pohon terlihat tajam dan jelas.</span>
                 </li>
               </ul>
             </div>
 
+            </div>
+
             {/* Action CTA */}
-            <div className="flex flex-col items-center pt-2">
+            <div className="flex flex-col items-center pt-2 lg:col-span-2 lg:col-start-1">
               <button
                 onClick={runInference}
                 disabled={!image}

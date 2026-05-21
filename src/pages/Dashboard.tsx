@@ -24,6 +24,8 @@ import {
   AlertTriangle,
   PlaySquare,
   Users,
+  User,
+  Settings,
   ArrowUpRight,
   ArrowDownRight,
   Activity,
@@ -163,6 +165,7 @@ export default function Dashboard() {
   // Notification System States
   const [notifications, setNotifications] = useState<{ id: string; message: string; type: 'success' | 'info' | 'error' }[]>([]);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [inboxNotifications, setInboxNotifications] = useState([
     { id: 'welcome', message: 'Selamat datang di Nyawit AI! Sistem siap memproses citra drone UAV.', time: '09:00 AM', read: true, type: 'success' }
   ]);
@@ -315,84 +318,85 @@ export default function Dashboard() {
     const intervalTime = 40;
     const increment = 100 / (duration / intervalTime);
 
+    let currentProgress = 0;
     const timer = setInterval(() => {
-      setAnalysisProgress((prev) => {
-        const next = prev + increment;
-        if (next >= 100) {
-          clearInterval(timer);
-          setTimeout(() => {
-            // Inference complete! Prepend to recent history logs
-            const addedTrees = Math.floor(1200 + Math.random() * 2000);
-            const addedYellow = Math.floor(15 + Math.random() * 25);
-            const addedDead = Math.floor(1 + Math.random() * 4);
-            const addedHealthy = addedTrees - addedYellow - addedDead;
+      currentProgress += increment;
 
-            const randomBlocks = ['Block A - North', 'Sector S-02', 'Sector N-14', 'Block C - East', 'Block B - South'];
-            const randomBlock = randomBlocks[Math.floor(Math.random() * randomBlocks.length)];
+      if (currentProgress >= 100) {
+        clearInterval(timer);
+        setAnalysisProgress(100);
+        setAnalysisStep(3);
 
-            const newLog = {
-              id: `ANL-${Math.floor(2400 + Math.random() * 200)}`,
-              date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-              block: randomBlock,
-              trees: addedTrees,
-              status: 'Completed',
-              confidence: `${(92 + Math.random() * 7).toFixed(1)}%`,
-              thumb: image
-            };
+        setTimeout(() => {
+          // Inference complete! Prepend to recent history logs
+          const addedTrees = Math.floor(1200 + Math.random() * 2000);
+          const addedYellow = Math.floor(15 + Math.random() * 25);
+          const addedDead = Math.floor(1 + Math.random() * 4);
+          const addedHealthy = addedTrees - addedYellow - addedDead;
 
-            setLogs((prevLogs) => [newLog, ...prevLogs]);
+          const randomBlocks = ['Block A - North', 'Sector S-02', 'Sector N-14', 'Block C - East', 'Block B - South'];
+          const randomBlock = randomBlocks[Math.floor(Math.random() * randomBlocks.length)];
 
-            // Dynamically generate a premium report record matching this analysis
-            const newReport = {
-              id: `REP-${newLog.id.split('-')[1]}`,
-              block: randomBlock,
-              date: newLog.date,
-              totalTrees: addedTrees,
-              healthy: addedHealthy,
-              yellowing: addedYellow,
-              dead: addedDead,
-              analysisDate: newLog.date,
-              thumb: image || 'https://images.unsplash.com/photo-1627883907153-61b453e00cc2?auto=format&fit=crop&w=150&q=80',
-              satelliteMap: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=80',
-              highPriority: [
-                { id: `T-${Math.floor(100 + Math.random() * 800)}`, condition: 'Dead', coords: `(1.23${Math.floor(Math.random() * 9)}, 103.45${Math.floor(Math.random() * 9)})` },
-                { id: `T-${Math.floor(100 + Math.random() * 800)}`, condition: 'Yellow', coords: `(1.23${Math.floor(Math.random() * 9)}, 103.45${Math.floor(Math.random() * 9)})` }
-              ]
-            };
-            setReports((prev) => [newReport, ...prev]);
-            setSelectedReportId(newReport.id);
+          const newLog = {
+            id: `ANL-${Math.floor(2400 + Math.random() * 200)}`,
+            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            block: randomBlock,
+            trees: addedTrees,
+            status: 'Completed',
+            confidence: `${(92 + Math.random() * 7).toFixed(1)}%`,
+            thumb: image
+          };
 
-            // Dynamically increment the stats
-            setStats((prevStats) => ({
-              totalTrees: prevStats.totalTrees + addedTrees,
-              healthy: prevStats.healthy + addedHealthy,
-              smallCanopy: prevStats.smallCanopy + Math.floor(addedTrees * 0.12),
-              yellowing: prevStats.yellowing + addedYellow,
-              deadMissing: prevStats.deadMissing + addedDead
-            }));
+          setLogs((prevLogs) => [newLog, ...prevLogs]);
 
-            // Reset inference states
-            setIsAnalyzing(false);
-            setImage(null);
+          // Dynamically generate a premium report record matching this analysis
+          const newReport = {
+            id: `REP-${newLog.id.split('-')[1]}`,
+            block: randomBlock,
+            date: newLog.date,
+            totalTrees: addedTrees,
+            healthy: addedHealthy,
+            yellowing: addedYellow,
+            dead: addedDead,
+            analysisDate: newLog.date,
+            thumb: image || 'https://images.unsplash.com/photo-1627883907153-61b453e00cc2?auto=format&fit=crop&w=150&q=80',
+            satelliteMap: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=80',
+            highPriority: [
+              { id: `T-${Math.floor(100 + Math.random() * 800)}`, condition: 'Dead', coords: `(1.23${Math.floor(Math.random() * 9)}, 103.45${Math.floor(Math.random() * 9)})` },
+              { id: `T-${Math.floor(100 + Math.random() * 800)}`, condition: 'Yellow', coords: `(1.23${Math.floor(Math.random() * 9)}, 103.45${Math.floor(Math.random() * 9)})` }
+            ]
+          };
+          setReports((prev) => [newReport, ...prev]);
+          setSelectedReportId(newReport.id);
 
-            // Automatically navigate to overview
-            setActiveTab('Overview');
-            showNotification(`Analisis UAV Drone untuk ${randomBlock} berhasil diselesaikan! Data statistik kebun telah diperbarui.`, 'success');
-          }, 800);
-          return 100;
-        }
+          // Dynamically increment the stats
+          setStats((prevStats) => ({
+            totalTrees: prevStats.totalTrees + addedTrees,
+            healthy: prevStats.healthy + addedHealthy,
+            smallCanopy: prevStats.smallCanopy + Math.floor(addedTrees * 0.12),
+            yellowing: prevStats.yellowing + addedYellow,
+            deadMissing: prevStats.deadMissing + addedDead
+          }));
 
+          // Reset inference states
+          setIsAnalyzing(false);
+          setImage(null);
+
+          // Automatically navigate to overview
+          setActiveTab('Overview');
+          showNotification(`Analisis UAV Drone untuk ${randomBlock} berhasil diselesaikan! Data statistik kebun telah diperbarui.`, 'success');
+        }, 800);
+      } else {
+        setAnalysisProgress(currentProgress);
         // Update steps dynamically
-        if (next > 75) {
+        if (currentProgress > 75) {
           setAnalysisStep(3);
-        } else if (next > 50) {
+        } else if (currentProgress > 50) {
           setAnalysisStep(2);
-        } else if (next > 25) {
+        } else if (currentProgress > 25) {
           setAnalysisStep(1);
         }
-
-        return next;
-      });
+      }
     }, intervalTime);
   };
 
@@ -404,10 +408,9 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#fcfbf7] flex font-sans text-slate-800 relative">
-      
+    <>
       {/* TOP FLOATING NOTIFICATION SYSTEM */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 space-y-3 pointer-events-none w-full max-w-md px-4">
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10000] space-y-3 pointer-events-none w-full max-w-md px-4">
         <AnimatePresence>
           {notifications.map((notif) => (
             <motion.div
@@ -428,6 +431,8 @@ export default function Dashboard() {
           ))}
         </AnimatePresence>
       </div>
+
+      <div className="min-h-screen bg-[#fcfbf7] flex font-sans text-slate-800 relative">
       
       {/* Dynamic Keyframes Injection */}
       <style>{`
@@ -488,24 +493,27 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         
         {/* Topbar */}
-        <header className="h-20 bg-white border-b border-[#e5e2d6] flex items-center justify-between px-8 z-[9999] shrink-0 sticky top-0">
+        <header className="h-20 bg-white border-b border-[#e5e2d6] flex items-center justify-between px-8 z-30 shrink-0 sticky top-0">
           <div className="flex items-center gap-8">
             <h1 className="text-2xl font-extrabold text-[#04211a] tracking-tight">Analysis Dashboard</h1>
-            <div className="hidden lg:flex items-center gap-2 bg-[#fcfbf7] px-4 py-2.5 rounded-full border border-[#e5e2d6] text-sm">
-              <Search className="w-4 h-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Search blocks, zones..." 
-                className="bg-transparent border-none outline-none w-48 font-medium text-slate-700 placeholder:text-slate-400"
-              />
-            </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex flex-col items-end mr-2 hidden md:flex">
-              <span className="text-sm font-bold text-[#04211a]">Block Alpha Analysis</span>
-              <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                <Calendar className="w-3 h-3" /> Oct 24 - Oct 25, 2026
-              </span>
+              {logs.length > 0 ? (
+                <>
+                  <span className="text-sm font-bold text-[#04211a]">Last Analysis</span>
+                  <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> {logs[0].date}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm font-bold text-[#04211a]">No analysis yet</span>
+                  <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                    Ready to begin your first analysis
+                  </span>
+                </>
+              )}
             </div>
             <div className="relative">
               <button 
@@ -558,13 +566,49 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-            <button className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full border border-[#e5e2d6] hover:bg-slate-50 transition-all">
-              <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-800 font-bold text-xs uppercase">
-                OP
-              </div>
-              <span className="text-sm font-bold text-[#04211a] hidden sm:block">Operator 1</span>
-              <ChevronDown className="w-4 h-4 text-slate-400" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full border border-[#e5e2d6] hover:bg-slate-50 transition-all cursor-pointer active:scale-95"
+              >
+                <div className="w-8 h-8 bg-[#04211a]/5 rounded-full flex items-center justify-center text-[#04211a] font-bold text-xs uppercase border border-[#e5e2d6]">
+                  N
+                </div>
+                <div className="flex flex-col items-start hidden sm:flex">
+                  <span className="text-xs font-bold text-[#04211a] leading-none">Profile</span>
+                  <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">#NYA-10231</span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-slate-400 ml-1" />
+              </button>
+
+              {isProfileOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-[#e5e2d6] shadow-[0_15px_30px_rgba(4,33,26,0.15)] z-50 overflow-hidden py-1">
+                  <div className="p-4 border-b border-[#e5e2d6] bg-[#fcfbf7]">
+                    <span className="text-sm font-bold text-[#04211a] block">User Profile</span>
+                    <span className="text-[10px] text-slate-500 font-medium">NYA-10231</span>
+                  </div>
+                  <div className="p-1">
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-[#04211a] rounded-xl transition-all cursor-pointer">
+                      <User className="w-4 h-4" /> My Profile
+                    </button>
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-[#04211a] rounded-xl transition-all cursor-pointer">
+                      <Settings className="w-4 h-4" /> Account Settings
+                    </button>
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-[#04211a] rounded-xl transition-all cursor-pointer">
+                      <Bell className="w-4 h-4" /> Notifications
+                    </button>
+                  </div>
+                  <div className="p-1 border-t border-[#e5e2d6]">
+                    <button 
+                      onClick={() => navigate('/auth')}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" /> Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <button 
               onClick={triggerNewAnalysis}
               className="hidden md:flex ml-2 items-center gap-2 bg-[#04211a] text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-emerald-950 transition-all shadow-md active:scale-95 cursor-pointer"
@@ -663,5 +707,6 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }

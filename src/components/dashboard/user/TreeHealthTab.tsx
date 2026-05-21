@@ -103,10 +103,28 @@ export default function TreeHealthTab({ stats, hasData, onStartAnalysis }: TreeH
           <h3 className="text-base font-extrabold text-[#04211a] mb-6 flex items-center gap-2">
             <Activity className="w-4 h-4 text-emerald-600" /> Class Distribution
           </h3>
-          <div className="h-56">
+          <div className="h-64 relative">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1">
+              <span className="text-xl font-black text-[#04211a] leading-none">
+                {distributionData.reduce((a, b) => a + b.value, 0).toLocaleString()}
+              </span>
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Total Trees</span>
+            </div>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={distributionData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" paddingAngle={3} strokeWidth={0}>
+                <Pie 
+                  data={distributionData} cx="50%" cy="50%" 
+                  innerRadius={65} outerRadius={85} dataKey="value" paddingAngle={3} strokeWidth={0}
+                  labelLine={{ stroke: '#cbd5e1', strokeWidth: 1.5, strokeOpacity: 0.5 }}
+                  label={({ cx, cy, x, y, value, name, percent }) => {
+                    if (percent < 0.01) return null; // hide for <1%
+                    return (
+                      <text x={x} y={y} fill="#475569" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={11} fontWeight="bold">
+                        {`${Math.round(percent * 100)}%`}
+                      </text>
+                    );
+                  }}
+                >
                   {distributionData.map((entry, i) => (<Cell key={i} fill={entry.color} />))}
                 </Pie>
                 <Tooltip formatter={(val: number) => val.toLocaleString()} contentStyle={{ borderRadius: '12px', border: '1px solid #e5e2d6', fontSize: '12px', fontWeight: 700 }} />
