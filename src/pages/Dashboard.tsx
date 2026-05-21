@@ -478,15 +478,6 @@ export default function Dashboard() {
           ))}
         </nav>
 
-        <div className="p-4 mt-auto border-t border-white/5">
-          <button 
-            onClick={() => navigate('/auth')}
-            className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-sm font-bold text-slate-400 hover:bg-white/5 hover:text-white transition-all border border-transparent"
-          >
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
-        </div>
       </div>
 
       {/* Main Content ------------------------------------------ */}

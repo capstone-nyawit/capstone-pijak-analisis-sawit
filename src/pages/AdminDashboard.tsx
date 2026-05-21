@@ -27,7 +27,9 @@ import {
   Bell,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  User,
+  Settings
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import AdminOverviewTab from '../components/dashboard/admin/AdminOverviewTab';
@@ -63,6 +65,43 @@ const mockReports = [
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'Overview' | 'Logs' | 'Users' | 'Reports'>('Overview');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [notifications, setNotifications] = useState<{ id: string; message: string; type: 'success' | 'info' | 'error' }[]>([]);
+  const [isInboxOpen, setIsInboxOpen] = useState(false);
+  const [inboxNotifications, setInboxNotifications] = useState([
+    { id: 'join-1', message: 'Pengguna baru (Budi Santoso) berhasil bergabung ke organisasi menggunakan kode undangan.', time: '10:05 AM', read: false, type: 'success' }
+  ]);
+
+  const showNotification = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setNotifications(prev => [...prev, { id, message, type }]);
+
+    const newInboxItem = {
+      id,
+      message,
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      read: false,
+      type
+    };
+    setInboxNotifications(prev => [newInboxItem, ...prev]);
+
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 4000);
+  };
+
+  const markAsRead = (id: string) => {
+    setInboxNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const markAllAsRead = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInboxNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const triggerDownload = (reportName: string) => {
+    showNotification(`Berkas ${reportName} berhasil diekspor dan diunduh ke sistem lokal Anda!`, 'success');
+  };
 
   const [usersList, setUsersList] = useState(mockUsers.map(u => ({
     ...u,
@@ -91,7 +130,31 @@ export default function AdminDashboard() {
   // TAB RENDERING CALLS ----------------------------------------
 
   return (
-    <div className="min-h-screen bg-[#fcfbf7] flex font-sans text-slate-800 relative">
+    <>
+      {/* TOP FLOATING NOTIFICATION SYSTEM */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10000] space-y-3 pointer-events-none w-full max-w-md px-4">
+        <AnimatePresence>
+          {notifications.map((notif) => (
+            <motion.div
+              key={notif.id}
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className="bg-white border border-[#e5e2d6] shadow-[0_15px_30px_rgba(4,33,26,0.12)] p-4 rounded-2xl pointer-events-auto flex items-start gap-3 border-l-4 border-l-emerald-500"
+            >
+              <div className="bg-emerald-50 text-emerald-600 p-1.5 rounded-xl shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 animate-bounce" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs font-black text-[#04211a] tracking-tight">Notifikasi Sistem</h4>
+                <p className="text-[10px] text-slate-600 font-semibold leading-relaxed mt-1">{notif.message}</p>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      <div className="min-h-screen bg-[#fcfbf7] flex font-sans text-slate-800 relative">
       
       {/* Sidebar ------------------------------------------------- */}
       <div className="w-72 bg-[#04211a] text-white flex flex-col shadow-2xl relative z-20 shrink-0">
@@ -123,16 +186,6 @@ export default function AdminDashboard() {
             </button>
           ))}
         </nav>
-
-        <div className="p-4 mt-auto border-t border-white/5">
-          <button 
-            onClick={() => navigate('/auth')}
-            className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-sm font-bold text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all border border-transparent"
-          >
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
-        </div>
       </div>
 
       {/* Main Content ------------------------------------------ */}
@@ -143,21 +196,101 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-extrabold text-[#04211a] tracking-tight">{activeTab}</h1>
           
           <div className="flex items-center gap-4">
-            <button className="w-10 h-10 rounded-full border border-[#e5e2d6] flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors relative cursor-pointer active:scale-95">
-              <Bell className="w-5 h-5" />
-              <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-[1.5px] border-white" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsInboxOpen(!isInboxOpen)}
+                className="w-10 h-10 rounded-full border border-[#e5e2d6] flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors relative cursor-pointer active:scale-95"
+              >
+                <Bell className="w-5 h-5" />
+                {inboxNotifications.filter(n => !n.read).length > 0 && (
+                  <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-[1.5px] border-white animate-pulse" />
+                )}
+              </button>
+              
+              {isInboxOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl border border-[#e5e2d6] shadow-[0_15px_30px_rgba(4,33,26,0.15)] z-50 overflow-hidden py-1">
+                  {/* Header */}
+                  <div className="px-4 py-3 border-b border-[#e5e2d6] flex justify-between items-center bg-[#fcfbf7]">
+                    <span className="text-[10px] font-black text-[#04211a] uppercase tracking-wider">Notifikasi Sistem</span>
+                    {inboxNotifications.filter(n => !n.read).length > 0 && (
+                      <button 
+                        onClick={markAllAsRead}
+                        className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                      >
+                        Tandai semua dibaca
+                      </button>
+                    )}
+                  </div>
+
+                  {/* List */}
+                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                    {inboxNotifications.map((notif) => (
+                      <div 
+                        key={notif.id}
+                        onClick={() => markAsRead(notif.id)}
+                        className={`p-4 flex gap-3 cursor-pointer hover:bg-slate-50 transition-all ${!notif.read ? 'bg-[#f1faf5]' : 'bg-white'}`}
+                      >
+                        <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!notif.read ? 'bg-emerald-500' : 'bg-transparent'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-semibold text-slate-700 leading-relaxed break-words">{notif.message}</p>
+                          <span className="text-[9px] font-bold text-slate-400 block mt-1">{notif.time}</span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {inboxNotifications.length === 0 && (
+                      <div className="p-8 text-center text-slate-400 font-medium text-xs">
+                        Belum ada notifikasi baru.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="h-6 w-px bg-[#e5e2d6] mx-1"></div>
-            <button className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full border border-[#e5e2d6] hover:bg-slate-50 transition-all">
-              <div className="w-8 h-8 bg-[#04211a] rounded-full flex items-center justify-center text-white font-bold text-xs uppercase">
-                AD
-              </div>
-              <div className="hidden sm:flex flex-col items-start">
-                <span className="text-sm font-bold text-[#04211a] leading-none">Admin</span>
-                <span className="text-[10px] text-slate-500 font-bold uppercase mt-0.5">Superuser</span>
-              </div>
-              <ChevronDown className="w-4 h-4 text-slate-400 ml-1" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full border border-[#e5e2d6] hover:bg-slate-50 transition-all cursor-pointer active:scale-95"
+              >
+                <div className="w-8 h-8 bg-[#04211a]/5 rounded-full flex items-center justify-center text-[#04211a] font-bold text-xs uppercase border border-[#e5e2d6]">
+                  A
+                </div>
+                <div className="hidden sm:flex flex-col items-start">
+                  <span className="text-xs font-bold text-[#04211a] leading-none">Profile</span>
+                  <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">#NYA-ADMIN</span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-slate-400 ml-1" />
+              </button>
+
+              {isProfileOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-[#e5e2d6] shadow-[0_15px_30px_rgba(4,33,26,0.15)] z-50 overflow-hidden py-1">
+                  <div className="p-4 border-b border-[#e5e2d6] bg-[#fcfbf7]">
+                    <span className="text-sm font-bold text-[#04211a] block">Admin Profile</span>
+                    <span className="text-[10px] text-slate-500 font-medium">Superuser</span>
+                  </div>
+                  <div className="p-1">
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-[#04211a] rounded-xl transition-all cursor-pointer">
+                      <User className="w-4 h-4" /> My Profile
+                    </button>
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-[#04211a] rounded-xl transition-all cursor-pointer">
+                      <Settings className="w-4 h-4" /> Account Settings
+                    </button>
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-[#04211a] rounded-xl transition-all cursor-pointer">
+                      <Bell className="w-4 h-4" /> Notifications
+                    </button>
+                  </div>
+                  <div className="p-1 border-t border-[#e5e2d6]">
+                    <button 
+                      onClick={() => navigate('/auth')}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" /> Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -194,6 +327,7 @@ export default function AdminDashboard() {
                 <div key="reports">
                   <AdminReportsTab 
                     reports={mockReports} 
+                    triggerDownload={triggerDownload}
                   />
                 </div>
               )}
@@ -202,5 +336,6 @@ export default function AdminDashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }

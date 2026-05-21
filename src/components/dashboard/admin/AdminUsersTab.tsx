@@ -3,8 +3,9 @@
  * Manages users and allows switching user roles between User and Admin.
  */
 
-import { motion } from 'motion/react';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Plus, Edit, Trash2, Copy, X, Clock, CheckCircle2 } from 'lucide-react';
 
 interface User {
   id: string;
@@ -21,11 +22,59 @@ interface AdminUsersTabProps {
 }
 
 export default function AdminUsersTab({ usersList, handleRoleChange }: AdminUsersTabProps) {
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
+  const [copied, setCopied] = useState(false);
+
+  const generateCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = 'NYA-';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setInviteCode(code);
+    setTimeLeft(600);
+    setCopied(false);
+  };
+
+  const openInviteModal = () => {
+    generateCode();
+    setIsInviteModalOpen(true);
+  };
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isInviteModalOpen && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (isInviteModalOpen && timeLeft === 0) {
+      generateCode();
+    }
+    return () => clearInterval(timer);
+  }, [isInviteModalOpen, timeLeft]);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(inviteCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm flex flex-col h-full overflow-hidden">
       <div className="p-6 border-b border-[#e5e2d6] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h3 className="text-lg font-extrabold text-[#04211a]">Organization Users</h3>
-        <button className="flex items-center gap-2 bg-[#04211a] text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-emerald-950 transition-all shadow-md active:scale-95">
+        <button 
+          onClick={openInviteModal}
+          className="flex items-center gap-2 bg-[#04211a] text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-emerald-950 transition-all shadow-md active:scale-95 cursor-pointer"
+        >
           <Plus className="w-4 h-4" /> Add User
         </button>
       </div>
@@ -87,6 +136,59 @@ export default function AdminUsersTab({ usersList, handleRoleChange }: AdminUser
           </tbody>
         </table>
       </div>
+
+      {/* Invite Modal */}
+      <AnimatePresence>
+        {isInviteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setIsInviteModalOpen(false)}
+              className="absolute inset-0 bg-[#04211a]/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative bg-white rounded-[2rem] border border-[#e5e2d6] shadow-2xl p-8 max-w-md w-full"
+            >
+              <button 
+                onClick={() => setIsInviteModalOpen(false)}
+                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-full hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="flex flex-col items-center text-center mt-4">
+                <h3 className="text-2xl font-black text-[#04211a] mb-2">Invite New User</h3>
+                <p className="text-sm font-semibold text-slate-500 mb-8 max-w-[280px]">
+                  Bagikan kode unik ini kepada pengguna baru untuk bergabung.
+                </p>
+
+                <div className="w-full bg-[#fcfbf7] border-2 border-dashed border-[#e5e2d6] rounded-2xl p-6 relative group">
+                  <div className="text-3xl font-mono font-black text-[#04211a] tracking-[0.1em] md:tracking-[0.2em] break-all">{inviteCode}</div>
+                  
+                  <button 
+                    onClick={handleCopy}
+                    className="absolute top-1/2 right-4 -translate-y-1/2 p-2.5 bg-white border border-[#e5e2d6] rounded-xl text-slate-500 hover:text-[#04211a] hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm cursor-pointer active:scale-95"
+                  >
+                    {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <Copy className="w-5 h-5" />}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 mt-6 px-4 py-2 bg-amber-50 rounded-full border border-amber-100">
+                  <Clock className="w-4 h-4 text-amber-600" />
+                  <span className="text-xs font-bold text-amber-700">
+                    Kode ini hangus dalam <span className="font-mono text-sm ml-1">{formatTime(timeLeft)}</span>
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

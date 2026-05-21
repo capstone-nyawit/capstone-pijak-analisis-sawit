@@ -52,12 +52,6 @@ export default function InferenceTab({
               <h2 className="text-3xl font-black text-[#04211a] tracking-tight">Mulai Analisis Kebun</h2>
               <p className="text-slate-500 font-semibold mt-1">Unggah gambar kebun untuk menjalankan deteksi dan analisis kondisi pohon sawit.</p>
             </div>
-            <button 
-              onClick={() => setActiveTab('Overview')}
-              className="self-start md:self-auto px-5 py-2.5 border border-[#e5e2d6] bg-white rounded-xl hover:bg-slate-50 text-sm font-bold text-[#04211a] transition-all flex items-center gap-2 cursor-pointer shadow-sm active:scale-95"
-            >
-              Batal
-            </button>
           </div>
 
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 pt-6">

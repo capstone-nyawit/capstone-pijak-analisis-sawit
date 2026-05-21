@@ -16,9 +16,10 @@ interface Report {
 
 interface AdminReportsTabProps {
   reports: Report[];
+  triggerDownload: (name: string) => void;
 }
 
-export default function AdminReportsTab({ reports }: AdminReportsTabProps) {
+export default function AdminReportsTab({ reports, triggerDownload }: AdminReportsTabProps) {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-8">
       <div className="bg-white p-6 rounded-[2rem] border border-[#e5e2d6] shadow-sm">
@@ -47,7 +48,10 @@ export default function AdminReportsTab({ reports }: AdminReportsTabProps) {
                   </div>
                 </div>
               </div>
-              <button className="p-3 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm">
+              <button 
+                onClick={() => triggerDownload(report.name)}
+                className="p-3 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm cursor-pointer active:scale-95"
+              >
                 <Download className="w-4 h-4" />
               </button>
             </div>
