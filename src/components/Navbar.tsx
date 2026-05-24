@@ -4,7 +4,7 @@
  */
 
 import { motion, AnimatePresence } from 'motion/react';
-import { Leaf, Menu, X } from 'lucide-react';
+import { TreePalm, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -34,7 +34,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-brand-900 rounded-xl flex items-center justify-center shadow-lg shadow-brand-900/10">
-              <Leaf className="text-brand-500 w-6 h-6" />
+              <TreePalm className="text-brand-500 w-6 h-6" />
             </div>
             <span className={`font-black text-2xl tracking-tighter transition-colors duration-300 ${scrolled ? 'text-brand-950' : 'text-white'}`}>
               Nyawit<span className="text-brand-500">AI</span>

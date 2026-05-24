@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Leaf, ArrowRight, Mail, Lock, User, Building2, ShieldCheck, Eye, EyeOff, CheckCircle2, Globe, Clock, RefreshCw } from 'lucide-react';
+import { TreePalm, ArrowRight, Mail, Lock, User, Building2, ShieldCheck, Eye, EyeOff, CheckCircle2, Globe, Clock, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function AuthPage() {
@@ -115,7 +115,7 @@ export default function AuthPage() {
             onClick={() => navigate('/')}
           >
             <div className="w-14 h-14 bg-[#fcfbf7] rounded-2xl flex items-center justify-center shadow-[0_20px_40px_rgba(0,0,0,0.3)] group-hover:scale-105 transition-transform">
-              <Leaf className="text-[#04211a] w-8 h-8" />
+              <TreePalm className="text-[#04211a] w-8 h-8" />
             </div>
             <span className="text-[#fcfbf7] font-black text-4xl tracking-tighter">
               Nyawit<span className="text-teal-400">AI</span>

@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, 
   Map, 
-  Leaf, 
+  TreePalm, 
   Sprout, 
   FileText, 
   FileSpreadsheet,
@@ -43,7 +43,8 @@ import {
   Eye,
   Target,
   Zap,
-  Beaker
+  Beaker,
+  Leaf
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
@@ -228,7 +229,7 @@ export default function Dashboard() {
       className="min-h-[480px] w-full flex flex-col items-center justify-center text-center p-8 bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm max-w-2xl mx-auto my-12"
     >
       <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6 text-emerald-700 shadow-inner border border-emerald-100/50 animate-pulse">
-        <Leaf className="w-10 h-10 text-emerald-800" />
+        <TreePalm className="w-10 h-10 text-emerald-800" />
       </div>
       <h3 className="text-xl font-black text-[#04211a] mb-2">{title}</h3>
       <p className="text-slate-500 max-w-md font-semibold text-xs leading-relaxed mb-6">
@@ -262,7 +263,7 @@ export default function Dashboard() {
 
   const menu = [
     { icon: LayoutDashboard, label: 'Dashboard / Overview', value: 'Overview' as const, active: activeTab === 'Overview' },
-    { icon: PlaySquare, label: 'Proses Inferensi', value: 'Inference' as const, active: activeTab === 'Inference' },
+    // { icon: PlaySquare, label: 'Proses Inferensi', value: 'Inference' as const, active: activeTab === 'Inference' },
     { icon: Leaf, label: 'Tree Health', value: 'Tree Health' as const, active: activeTab === 'Tree Health' },
     { icon: Map, label: 'VRA Tools', value: 'VRA' as const, active: activeTab === 'VRA' },
     { icon: CloudLightning, label: 'Inference Log', value: 'Logs' as const, active: activeTab === 'Logs' },
@@ -407,6 +408,7 @@ export default function Dashboard() {
     'Menyusun peta zonasi kesehatan & model preskripsi pemupukan (VRA)...'
   ];
 
+  const [showConfirm, setShowConfirm] = useState(false);
   return (
     <>
       {/* TOP FLOATING NOTIFICATION SYSTEM */}
@@ -451,7 +453,7 @@ export default function Dashboard() {
       <div className="w-72 bg-[#04211a] text-white flex flex-col shadow-2xl relative z-20 shrink-0">
         <button onClick={() => setActiveTab('Overview')} className="p-8 flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer text-left focus:outline-none">
           <div className="w-10 h-10 bg-brand-900 rounded-xl flex items-center justify-center shadow-lg shadow-brand-900/10 shrink-0">
-            <Leaf className="text-brand-500 w-6 h-6" />
+            <TreePalm className="text-brand-500 w-6 h-6" />
           </div>
           <div>
             <span className="font-black text-2xl tracking-tighter text-white block">
@@ -478,6 +480,15 @@ export default function Dashboard() {
           ))}
         </nav>
 
+        <div className="p-4 mt-auto border-t border-white/5">
+          <button 
+            onClick={() => navigate('/auth')}
+            className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-sm font-bold text-slate-400 hover:bg-white/5 hover:text-white transition-all border border-transparent"
+          >
+            <LogOut className="w-5 h-5" />
+            Sign Out
+          </button>
+        </div>
       </div>
 
       {/* Main Content ------------------------------------------ */}
@@ -697,6 +708,37 @@ export default function Dashboard() {
           </AnimatePresence>
         </div>
       </div>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 transition-all">
+          <div className="bg-[#021611] border border-emerald-500/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl shadow-black/50">
+
+            <p className="text-white text-sm mb-6 leading-relaxed">
+              Apakah Anda yakin ingin keluar? Sesi Anda saat ini akan diakhiri.
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-5 py-2.5 text-sm font-bold text-emerald-500/50 hover:bg-white/5 hover:text-white rounded-xl transition-all"
+              >
+                Batal
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowConfirm(false); 
+                  navigate('/auth');    
+                }}
+                className="px-5 py-2.5 text-sm font-bold bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-xl border border-red-500/20 hover:border-transparent transition-all"
+              >
+                Keluar
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
     </>
   );
