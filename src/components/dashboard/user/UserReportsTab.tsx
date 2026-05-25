@@ -8,7 +8,8 @@ import {
   Sprout, 
   Download, 
   FileText, 
-  FileSpreadsheet 
+  FileSpreadsheet,
+  PlaySquare
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -36,17 +37,17 @@ interface UserReportsTabProps {
   selectedReportId: string;
   setSelectedReportId: (id: string) => void;
   triggerDownload: (block: string, format: string) => void;
+  onStartAnalysis: () => void;
 }
 
 export default function UserReportsTab({
   reports,
   selectedReportId,
   setSelectedReportId,
-  triggerDownload
+  triggerDownload,
+  onStartAnalysis
 }: UserReportsTabProps) {
   const selectedReport = reports.find(r => r.id === selectedReportId) || reports[0];
-
-  if (!selectedReport) return null;
 
   return (
     <motion.div
@@ -62,8 +63,14 @@ export default function UserReportsTab({
         <p className="text-sm text-slate-500 font-medium mt-1">Kelola data bisnis operasional kebun, ringkasan zonasi kesehatan, dan ekspor laporan kerja.</p>
       </div>
 
-      {/* Two-column Reports Layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 pt-2 items-start">
+      {!selectedReport ? (
+        <div className="flex justify-center items-center py-20">
+          <p className="text-slate-400 font-bold text-sm">Laporan belum tersedia.</p>
+        </div>
+      ) : (
+      <>
+        {/* Two-column Reports Layout */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 pt-2 items-start">
         
         {/* Left Column: List of Plantation Block Reports (5 cols) */}
         <div className="xl:col-span-5 space-y-4 max-h-[680px] overflow-y-auto pr-1">
@@ -245,6 +252,8 @@ export default function UserReportsTab({
         </div>
 
       </div>
+      </>
+      )}
     </motion.div>
   );
 }

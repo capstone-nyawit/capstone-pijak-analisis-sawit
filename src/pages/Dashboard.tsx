@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, 
@@ -170,6 +170,22 @@ export default function Dashboard() {
   const [inboxNotifications, setInboxNotifications] = useState([
     { id: 'welcome', message: 'Selamat datang di Nyawit AI! Sistem siap memproses citra drone UAV.', time: '09:00 AM', read: true, type: 'success' }
   ]);
+
+  const inboxRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (inboxRef.current && !inboxRef.current.contains(event.target as Node)) {
+        setIsInboxOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const showNotification = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -480,15 +496,7 @@ export default function Dashboard() {
           ))}
         </nav>
 
-        <div className="p-4 mt-auto border-t border-white/5">
-          <button 
-            onClick={() => navigate('/auth')}
-            className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-sm font-bold text-slate-400 hover:bg-white/5 hover:text-white transition-all border border-transparent"
-          >
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
-        </div>
+
       </div>
 
       {/* Main Content ------------------------------------------ */}
@@ -517,7 +525,7 @@ export default function Dashboard() {
                 </>
               )}
             </div>
-            <div className="relative">
+            <div className="relative" ref={inboxRef}>
               <button 
                 onClick={() => setIsInboxOpen(!isInboxOpen)}
                 className="w-10 h-10 rounded-full border border-[#e5e2d6] flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors relative cursor-pointer active:scale-95"
@@ -532,7 +540,7 @@ export default function Dashboard() {
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl border border-[#e5e2d6] shadow-[0_15px_30px_rgba(4,33,26,0.15)] z-50 overflow-hidden py-1">
                   {/* Header */}
                   <div className="px-4 py-3 border-b border-[#e5e2d6] flex justify-between items-center bg-[#fcfbf7]">
-                    <span className="text-[10px] font-black text-[#04211a] uppercase tracking-wider">Notifikasi Kebun</span>
+                    <span className="text-[10px] font-black text-[#04211a] uppercase tracking-wider">Notifikasi</span>
                     {inboxNotifications.filter(n => !n.read).length > 0 && (
                       <button 
                         onClick={markAllAsRead}
@@ -568,7 +576,7 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-            <div className="relative">
+            <div className="relative" ref={profileRef}>
               <button 
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full border border-[#e5e2d6] hover:bg-slate-50 transition-all cursor-pointer active:scale-95"
@@ -602,7 +610,10 @@ export default function Dashboard() {
                   </div>
                   <div className="p-1 border-t border-[#e5e2d6]">
                     <button 
-                      onClick={() => navigate('/auth')}
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        setShowConfirm(true);
+                      }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" /> Sign Out
@@ -665,6 +676,7 @@ export default function Dashboard() {
                 selectedReportId={selectedReportId}
                 setSelectedReportId={setSelectedReportId}
                 triggerDownload={triggerDownload}
+                onStartAnalysis={() => setActiveTab('Inference')}
               />
             )}
 
