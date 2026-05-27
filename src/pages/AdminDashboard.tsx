@@ -36,6 +36,7 @@ import AdminOverviewTab from '../components/dashboard/admin/AdminOverviewTab';
 import AdminLogsTab from '../components/dashboard/admin/AdminLogsTab';
 import AdminUsersTab from '../components/dashboard/admin/AdminUsersTab';
 import AdminReportsTab from '../components/dashboard/admin/AdminReportsTab';
+import AccountSettingsTab from '../components/dashboard/AccountSettingsTab';
 
 // MOCK DATA ----------------------------------------------------
 
@@ -64,7 +65,7 @@ const mockReports = [
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Logs' | 'Users' | 'Reports'>('Overview');
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Logs' | 'Users' | 'Reports' | 'Settings'>('Overview');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [notifications, setNotifications] = useState<{ id: string; message: string; type: 'success' | 'info' | 'error' }[]>([]);
@@ -127,6 +128,11 @@ export default function AdminDashboard() {
 
   const handleRoleChange = (userId: string, newRole: string) => {
     setUsersList(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    setUsersList(prev => prev.filter(u => u.id !== userId));
+    showNotification('Pengguna telah berhasil dihapus dari organisasi.', 'success');
   };
 
   const getUserDetails = (userName: string) => {
@@ -210,7 +216,9 @@ export default function AdminDashboard() {
         
         {/* Topbar */}
         <header className="h-20 bg-white border-b border-[#e5e2d6] flex items-center justify-between px-8 z-30 shrink-0 sticky top-0">
-          <h1 className="text-2xl font-extrabold text-[#04211a] tracking-tight">{activeTab}</h1>
+          <h1 className="text-2xl font-extrabold text-[#04211a] tracking-tight">
+            {activeTab === 'Settings' ? 'Account Settings' : activeTab}
+          </h1>
           
           <div className="flex items-center gap-4">
             <div className="relative" ref={inboxRef}>
@@ -287,14 +295,14 @@ export default function AdminDashboard() {
                     <span className="text-[10px] text-slate-500 font-medium">Superuser</span>
                   </div>
                   <div className="p-1">
-                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-[#04211a] rounded-xl transition-all cursor-pointer">
-                      <User className="w-4 h-4" /> My Profile
-                    </button>
-                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-[#04211a] rounded-xl transition-all cursor-pointer">
+                    <button 
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        setActiveTab('Settings');
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-[#04211a] rounded-xl transition-all cursor-pointer text-left"
+                    >
                       <Settings className="w-4 h-4" /> Account Settings
-                    </button>
-                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-[#04211a] rounded-xl transition-all cursor-pointer">
-                      <Bell className="w-4 h-4" /> Notifications
                     </button>
                   </div>
                   <div className="p-1 border-t border-[#e5e2d6]">
@@ -315,8 +323,8 @@ export default function AdminDashboard() {
         </header>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#fcfbf7]">
-          <div className="max-w-6xl mx-auto h-full">
+        <div className="flex-1 overflow-y-auto scroll-smooth bg-white">
+          <div className="w-full h-full">
             <AnimatePresence mode="wait">
               {activeTab === 'Overview' && (
                 <div key="overview">
@@ -340,6 +348,7 @@ export default function AdminDashboard() {
                   <AdminUsersTab 
                     usersList={usersList} 
                     handleRoleChange={handleRoleChange} 
+                    handleDeleteUser={handleDeleteUser}
                   />
                 </div>
               )}
@@ -349,6 +358,11 @@ export default function AdminDashboard() {
                     reports={mockReports} 
                     triggerDownload={triggerDownload}
                   />
+                </div>
+              )}
+              {activeTab === 'Settings' && (
+                <div key="settings" className="h-full">
+                  <AccountSettingsTab />
                 </div>
               )}
             </AnimatePresence>

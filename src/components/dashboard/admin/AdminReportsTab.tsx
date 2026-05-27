@@ -21,8 +21,8 @@ interface AdminReportsTabProps {
 
 export default function AdminReportsTab({ reports, triggerDownload }: AdminReportsTabProps) {
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-8">
-      <div className="bg-white p-6 rounded-[2rem] border border-[#e5e2d6] shadow-sm">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="bg-white flex flex-col h-full">
+      <div className="p-6 md:p-8 flex flex-col h-full">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-extrabold text-[#04211a]">Executive Reports</h3>
           <button className="text-sm font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl">Generate Custom</button>

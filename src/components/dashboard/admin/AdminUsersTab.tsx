@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Edit, Trash2, Copy, X, Clock, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Copy, X, Clock, CheckCircle2 } from 'lucide-react';
 
 interface User {
   id: string;
@@ -19,13 +19,17 @@ interface User {
 interface AdminUsersTabProps {
   usersList: User[];
   handleRoleChange: (userId: string, newRole: string) => void;
+  handleDeleteUser: (userId: string) => void;
 }
 
-export default function AdminUsersTab({ usersList, handleRoleChange }: AdminUsersTabProps) {
+export default function AdminUsersTab({ usersList, handleRoleChange, handleDeleteUser }: AdminUsersTabProps) {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
   const [copied, setCopied] = useState(false);
+  
+  // Delete confirmation state
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   const generateCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -66,11 +70,18 @@ export default function AdminUsersTab({ usersList, handleRoleChange }: AdminUser
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
+  
+  const confirmDelete = () => {
+    if (userToDelete) {
+      handleDeleteUser(userToDelete);
+      setUserToDelete(null);
+    }
+  };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm flex flex-col h-full overflow-hidden">
-      <div className="p-6 border-b border-[#e5e2d6] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h3 className="text-lg font-extrabold text-[#04211a]">Organization Users</h3>
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="bg-white flex flex-col h-full overflow-hidden">
+      <div className="p-6 md:p-8 border-b border-[#e5e2d6] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h3 className="text-xl font-extrabold text-[#04211a]">Organization Users</h3>
         <button 
           onClick={openInviteModal}
           className="flex items-center gap-2 bg-[#04211a] text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-emerald-950 transition-all shadow-md active:scale-95 cursor-pointer"
@@ -83,17 +94,17 @@ export default function AdminUsersTab({ usersList, handleRoleChange }: AdminUser
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] text-xs font-bold text-slate-500 uppercase tracking-widest">
-              <th className="px-6 py-4 font-bold">User</th>
-              <th className="px-6 py-4 font-bold">Role</th>
-              <th className="px-6 py-4 font-bold">Status</th>
-              <th className="px-6 py-4 font-bold">Last Active</th>
-              <th className="px-6 py-4 text-right font-bold">Manage</th>
+              <th className="px-6 md:px-8 py-4 font-bold">User</th>
+              <th className="px-6 md:px-8 py-4 font-bold">Role</th>
+              <th className="px-6 md:px-8 py-4 font-bold">Status</th>
+              <th className="px-6 md:px-8 py-4 font-bold">Last Active</th>
+              <th className="px-6 md:px-8 py-4 text-right font-bold">Manage</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e5e2d6]">
             {usersList.map((user) => (
               <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4">
+                <td className="px-6 md:px-8 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 font-bold text-xs uppercase shrink-0">
                       {user.name.split(' ').map(n => n[0]).join('')}
@@ -104,7 +115,7 @@ export default function AdminUsersTab({ usersList, handleRoleChange }: AdminUser
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-6 md:px-8 py-4">
                   <select 
                     value={user.role} 
                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
@@ -114,19 +125,19 @@ export default function AdminUsersTab({ usersList, handleRoleChange }: AdminUser
                     <option value="Admin">Admin</option>
                   </select>
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-6 md:px-8 py-4">
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                     <span className="text-sm font-bold text-slate-600">{user.status}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm font-medium text-slate-500">{user.lastActive}</td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-6 md:px-8 py-4 text-sm font-medium text-slate-500">{user.lastActive}</td>
+                <td className="px-6 md:px-8 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <button className="p-2 text-slate-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50">
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50">
+                    <button 
+                      onClick={() => setUserToDelete(user.id)}
+                      className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50 cursor-pointer"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -184,6 +195,50 @@ export default function AdminUsersTab({ usersList, handleRoleChange }: AdminUser
                     Kode ini hangus dalam <span className="font-mono text-sm ml-1">{formatTime(timeLeft)}</span>
                   </span>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {userToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setUserToDelete(null)}
+              className="absolute inset-0 bg-[#04211a]/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative bg-white rounded-[2rem] border border-[#e5e2d6] shadow-2xl p-8 max-w-sm w-full text-center"
+            >
+              <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-black text-[#04211a] mb-2">Delete User?</h3>
+              <p className="text-sm font-semibold text-slate-500 mb-6">
+                Are you sure you want to remove this user from the organization? This action cannot be undone.
+              </p>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setUserToDelete(null)}
+                  className="flex-1 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold rounded-xl transition-colors cursor-pointer border-none"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer border-none shadow-md shadow-red-600/20"
+                >
+                  Delete
+                </button>
               </div>
             </motion.div>
           </div>

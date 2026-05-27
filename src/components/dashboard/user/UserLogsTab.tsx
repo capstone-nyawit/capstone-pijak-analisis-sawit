@@ -55,7 +55,7 @@ export default function UserLogsTab({ logs, deleteLog, triggerDownload }: UserLo
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scroll-smooth">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6]">

@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { PasswordStrengthInput } from '../components/ui/password-strength-input';
 import { TreePalm, ArrowRight, Mail, Lock, User, Building2, ShieldCheck, Eye, EyeOff, CheckCircle2, Globe, Clock, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -284,35 +285,37 @@ export default function AuthPage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between px-1">
-                      <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-[#04211a] uppercase tracking-wider flex items-center gap-2 px-1">
                         <Lock className="w-3.5 h-3.5 opacity-40" />
                         Password
                       </label>
+                      <div className="relative">
+                        <input 
+                          required
+                          type={showPassword ? 'text' : 'password'} 
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium pr-14 placeholder:opacity-30"
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#04211a] p-1 transition-colors cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex justify-end px-1">
                       <button 
                         type="button" 
                         onClick={() => resetAuthView('forgot')}
                         className="text-xs font-bold text-teal-600 hover:text-teal-700 transition-colors"
                       >
                         Forgot Password?
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input 
-                        required
-                        type={showPassword ? 'text' : 'password'} 
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium pr-14 placeholder:opacity-30"
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#04211a] p-1 transition-colors"
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
                   </div>
@@ -559,24 +562,12 @@ export default function AuthPage() {
                           <Lock className="w-3.5 h-3.5 opacity-40" />
                           Password
                         </label>
-                        <div className="relative">
-                          <input 
-                            required
-                            minLength={8}
-                            type={showPassword ? 'text' : 'password'} 
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium pr-14 placeholder:opacity-30"
-                          />
-                          <button 
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#04211a] p-1 transition-colors"
-                          >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </button>
-                        </div>
+                        <PasswordStrengthInput
+                          value={password}
+                          onChange={(val) => setPassword(val)}
+                          placeholder="Create a strong password"
+                          className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium pr-14 placeholder:opacity-30 !h-auto"
+                        />
                       </div>
 
                       <div className="space-y-2">
@@ -763,24 +754,12 @@ export default function AuthPage() {
                           <Lock className="w-3.5 h-3.5 opacity-40" />
                           Password
                         </label>
-                        <div className="relative">
-                          <input 
-                            required
-                            minLength={8}
-                            type={showPassword ? 'text' : 'password'} 
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium pr-14 placeholder:opacity-30"
-                          />
-                          <button 
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#04211a] p-1 transition-colors"
-                          >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </button>
-                        </div>
+                        <PasswordStrengthInput
+                          value={password}
+                          onChange={(val) => setPassword(val)}
+                          placeholder="Create a strong password"
+                          className="w-full px-6 py-4 bg-[#fcfbf7] border-2 border-[#e5e2d6] rounded-2xl focus:outline-none focus:border-emerald-600 transition-all font-medium pr-14 placeholder:opacity-30 !h-auto"
+                        />
                       </div>
 
                       {/* Confirm Password */}
