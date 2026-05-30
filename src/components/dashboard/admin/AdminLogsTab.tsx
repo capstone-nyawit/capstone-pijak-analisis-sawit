@@ -1,11 +1,11 @@
-/**
- * Admin Logs Tab
- * Displays the complete set of inference activity records and statuses.
- */
+// /**
+//  * Admin Logs Tab
+//  * Displays the complete set of inference activity records and statuses.
+//  */
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Filter, Eye, CheckCircle2, AlertTriangle, X, Image as ImageIcon, MapPin } from 'lucide-react';
+import { Search, Filter, Eye, CheckCircle2, AlertTriangle, X, Image as ImageIcon, MapPin, XCircle } from 'lucide-react';
 
 interface UserDetail {
   name: string;
@@ -20,7 +20,7 @@ interface Log {
   block: string;
   trees: number;
   confidence: number;
-  status: string;
+  status: string; // 'Completed' | 'Pending' | 'Failed' | 'Flagged'
 }
 
 interface AdminLogsTabProps {
@@ -28,30 +28,106 @@ interface AdminLogsTabProps {
   getUserDetails: (userName: string) => UserDetail;
 }
 
+type FilterStatus = 'ALL' | 'COMPLETED' | 'PENDING' | 'FAILED';
+
 export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps) {
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
   const [vraStatus, setVraStatus] = useState<'PENDING' | 'COMPLETED'>('PENDING');
+  
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [activeFilter, setActiveFilter] = useState<FilterStatus>('ALL');
+  const [showFilterDropdown, setShowFilterDropdown] = useState<boolean>(false);
 
   const toggleVraStatus = () => {
     setVraStatus(prev => prev === 'PENDING' ? 'COMPLETED' : 'PENDING');
   };
 
+  // --- LOGIKA UTAMA: FILTER DAN SEARCH ---
+  const filteredLogs = logs.filter((log) => {
+    // 1. Normalisasi status: jika 'Flagged' otomatis dikonversi menjadi 'PENDING'
+    const normalizedStatus = log.status.toUpperCase() === 'FLAGGED' ? 'PENDING' : log.status.toUpperCase();
+    
+    // Pencocokan Filter Status
+    const matchesFilter = activeFilter === 'ALL' || normalizedStatus === activeFilter;
+
+    // Pencocokan Query Pencarian (Berdasarkan ID atau Nama Block)
+    const matchesSearch = 
+      log.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.block.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesFilter && matchesSearch;
+  });
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="bg-white flex flex-col h-full overflow-hidden">
+      
       <div className="p-6 md:p-8 border-b border-[#e5e2d6] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h3 className="text-xl font-extrabold text-[#04211a]">Inference History</h3>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        
+        <div className="flex items-center gap-3 w-full sm:w-auto relative">
           <div className="flex items-center gap-2 bg-[#fcfbf7] px-4 py-2 rounded-xl border border-[#e5e2d6] text-sm w-full sm:w-64">
             <Search className="w-4 h-4 text-slate-400" />
-            <input type="text" placeholder="Search ID or Block..." className="bg-transparent border-none outline-none w-full font-medium text-slate-700 placeholder:text-slate-400" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search ID or Block..." 
+              className="bg-transparent border-none outline-none w-full font-medium text-slate-700 placeholder:text-slate-400" 
+            />
+            {searchQuery && (
+              <X className="w-4 h-4 text-slate-400 hover:text-slate-600 cursor-pointer" onClick={() => setSearchQuery('')} />
+            )}
           </div>
-          <button className="p-2.5 rounded-xl border border-[#e5e2d6] text-slate-600 hover:bg-slate-50 transition-colors">
-            <Filter className="w-4 h-4" />
-          </button>
+
+          <div className="relative">
+            <button 
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
+                activeFilter !== 'ALL' 
+                  ? 'bg-emerald-600 border-emerald-600 text-white' 
+                  : 'border-[#e5e2d6] text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              {activeFilter !== 'ALL' && <span>{activeFilter}</span>}
+            </button>
+
+            <AnimatePresence>
+              {showFilterDropdown && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowFilterDropdown(false)} />
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute right-0 mt-2 w-48 bg-white border border-[#e5e2d6] rounded-2xl shadow-xl z-20 py-2 overflow-hidden"
+                  >
+                    {(['ALL', 'COMPLETED', 'PENDING', 'FAILED'] as FilterStatus[]).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => {
+                          setActiveFilter(status);
+                          setShowFilterDropdown(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors border-none bg-transparent cursor-pointer ${
+                          activeFilter === status 
+                            ? 'bg-emerald-50 text-emerald-700' 
+                            : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {status === 'ALL' ? 'ALL STATUS' : status}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
       
-      <div className="overflow-x-auto scroll-smooth">
+      {/* Tabel Utama */}
+      <div className="overflow-x-auto scroll-smooth flex-1">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] text-xs font-bold text-slate-500 uppercase tracking-widest">
@@ -65,58 +141,79 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e5e2d6]">
-            {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-slate-50 transition-colors group">
-                <td className="px-6 md:px-8 py-4">
-                  <span className="font-bold text-[#04211a]">{log.id}</span>
-                </td>
-                <td className="px-6 md:px-8 py-4">
-                  <span className="font-semibold text-slate-700">{log.block}</span>
-                </td>
-                <td className="px-6 md:px-8 py-4">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-slate-800 text-sm">{getUserDetails(log.user).name}</span>
-                    <span className="text-[10px] text-slate-500 font-bold uppercase">{getUserDetails(log.user).role}</span>
-                  </div>
-                </td>
-                <td className="px-6 md:px-8 py-4 text-sm font-medium text-slate-600">{log.date}</td>
-                <td className="px-6 md:px-8 py-4 text-sm font-semibold text-slate-700">{log.trees.toLocaleString()}</td>
-                <td className="px-6 md:px-8 py-4">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                    log.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {log.status === 'Completed' ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                    {log.status}
-                  </span>
-                </td>
-                <td className="px-6 md:px-8 py-4 text-right">
-                  {log.status === 'Completed' ? (
-                    <button 
-                      onClick={() => { setSelectedLog(log); setVraStatus('PENDING'); }}
-                      className="p-2 text-slate-400 hover:text-emerald-600 transition-colors rounded-lg hover:bg-emerald-50 cursor-pointer"
-                      title="View Details"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  ) : log.status === 'Flagged' ? (
-                    <button 
-                      onClick={() => { setSelectedLog(log); setVraStatus('PENDING'); }}
-                      className="px-2 py-1 bg-amber-950 text-amber-400 border border-amber-800 rounded text-[11px] font-semibold hover:bg-amber-900 transition-all cursor-pointer shadow-sm"
-                    >
-                      Resolve
-                    </button>
-                  ) : null}
+            {filteredLogs.length > 0 ? (
+              filteredLogs.map((log) => {
+                // Konversi visual: 'Flagged' as 'Pending'
+                const displayStatus = log.status.toUpperCase() === 'FLAGGED' ? 'Pending' : log.status;
+                const userDetails = getUserDetails(log.user);
+
+                return (
+                  <tr key={log.id} className="hover:bg-slate-50 transition-colors group">
+                    <td className="px-6 md:px-8 py-4">
+                      <span className="font-bold text-[#04211a]">{log.id}</span>
+                    </td>
+                    <td className="px-6 md:px-8 py-4">
+                      <span className="font-semibold text-slate-700">{log.block}</span>
+                    </td>
+                    <td className="px-6 md:px-8 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-800 text-sm">
+                          {userDetails?.name || 'Unknown Operator'}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase">
+                          {userDetails?.role || 'Staff'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 md:px-8 py-4 text-sm font-medium text-slate-600">{log.date}</td>
+                    <td className="px-6 md:px-8 py-4 text-sm font-semibold text-slate-700">{log.trees.toLocaleString()}</td>
+                    <td className="px-6 md:px-8 py-4">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                        displayStatus.toUpperCase() === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 
+                        displayStatus.toUpperCase() === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {displayStatus.toUpperCase() === 'COMPLETED' ? <CheckCircle2 className="w-3 h-3" /> : 
+                         displayStatus.toUpperCase() === 'PENDING' ? <AlertTriangle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                        {displayStatus}
+                      </span>
+                    </td>
+                    <td className="px-6 md:px-8 py-4 text-right">
+                      {displayStatus.toUpperCase() === 'COMPLETED' ? (
+                        <button 
+                          onClick={() => { setSelectedLog(log); setVraStatus('PENDING'); }}
+                          className="p-2 text-slate-400 hover:text-emerald-600 transition-colors rounded-lg hover:bg-emerald-50 cursor-pointer"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => { setSelectedLog(log); setVraStatus('PENDING'); }}
+                          className="px-2 py-1 bg-amber-950 text-amber-400 border border-amber-800 rounded text-[11px] font-semibold hover:bg-amber-900 transition-all cursor-pointer shadow-sm"
+                        >
+                          Resolve
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center text-sm font-semibold text-slate-400">
+                  No inference records found matching the current search criteria.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
+
       <div className="p-4 border-t border-[#e5e2d6] bg-[#fcfbf7] flex justify-center text-sm font-bold text-slate-500 shrink-0">
-        Showing {logs.length} of 1,248 logs
+        Showing {filteredLogs.length} of {logs.length} logs
       </div>
 
-      {/* Slide-over Drawer for Log Details */}
+      {/* Slide-over Drawer Section */}
       <AnimatePresence>
         {selectedLog && (
           <div className="fixed inset-0 z-[9999] flex justify-end bg-[#04211a]/40 backdrop-blur-sm transition-all">
@@ -138,8 +235,6 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
               </div>
 
               <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-8 bg-[#fcfbf7]">
-                
-                {/* 1. HEADER & METADATA LOG */}
                 <div className="bg-white p-6 rounded-2xl border border-[#e5e2d6] shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Analysis ID</span>
@@ -151,7 +246,9 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                   </div>
                   <div>
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Operator</span>
-                    <span className="text-sm font-semibold text-slate-800">{getUserDetails(selectedLog.user).name}</span>
+                    <span className="text-sm font-semibold text-slate-800">
+                      {getUserDetails(selectedLog.user)?.name || 'Unknown'}
+                    </span>
                   </div>
                   <div>
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Date & Time</span>
@@ -159,8 +256,8 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                   </div>
                 </div>
 
-                {/* 3. INDIKATOR HIGH-RISK ALERTS */}
-                {selectedLog.status === 'Flagged' && (
+                {/* convert flagged to pending */}
+                {(selectedLog.status.toUpperCase() === 'FLAGGED' || selectedLog.status.toUpperCase() === 'PENDING') && (
                   <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-start gap-4">
                     <div className="bg-red-100 p-2 rounded-full shrink-0">
                       <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -174,24 +271,20 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                   </div>
                 )}
 
-                {/* 2. VISUALISASI & HASIL OBJEK DETEKSI */}
                 <div className="bg-white rounded-2xl border border-[#e5e2d6] shadow-sm overflow-hidden">
                   <div className="p-6 border-b border-[#e5e2d6]">
                     <h4 className="text-sm font-extrabold text-[#04211a]">Detection Output (Faster R-CNN)</h4>
                   </div>
                   <div className="p-6 flex flex-col lg:flex-row gap-8">
-                    {/* Placeholder Image */}
                     <div className="flex-1 bg-slate-100 rounded-xl min-h-[250px] flex flex-col items-center justify-center border-2 border-dashed border-slate-200 relative overflow-hidden group">
                       <ImageIcon className="w-10 h-10 text-slate-300 mb-3 group-hover:scale-110 transition-transform" />
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Orthophoto View</span>
-                      {/* Mock Bounding Box */}
                       <div className="absolute top-[20%] left-[30%] w-16 h-16 border-[1.5px] border-emerald-500 rounded bg-emerald-500/10"></div>
                       <div className="absolute bottom-[30%] right-[25%] w-12 h-12 border-[1.5px] border-amber-500 rounded bg-amber-500/10"></div>
                       <div className="absolute top-[40%] left-[50%] w-20 h-20 border-[1.5px] border-red-500 rounded bg-red-500/10"></div>
                       <div className="absolute bottom-[10%] left-[20%] w-14 h-14 border-[1.5px] border-teal-500 rounded bg-teal-500/10"></div>
                     </div>
                     
-                    {/* Metrics */}
                     <div className="flex-1 flex flex-col justify-center space-y-6">
                       <div>
                         <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Trees Detected</span>
@@ -199,7 +292,6 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                       </div>
                       
                       <div className="space-y-4">
-                        {/* Healthy */}
                         <div>
                           <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
                             <span>Healthy Canopy</span>
@@ -209,7 +301,6 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                             <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '70%' }}></div>
                           </div>
                         </div>
-                        {/* Small */}
                         <div>
                           <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
                             <span>Small Canopy</span>
@@ -219,7 +310,6 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                             <div className="bg-teal-500 h-2 rounded-full" style={{ width: '12%' }}></div>
                           </div>
                         </div>
-                        {/* Yellowing */}
                         <div>
                           <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
                             <span>Yellowing / Nutrient Deficient</span>
@@ -229,7 +319,6 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                             <div className="bg-amber-400 h-2 rounded-full" style={{ width: '14%' }}></div>
                           </div>
                         </div>
-                        {/* Dead */}
                         <div>
                           <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
                             <span>Dead / Missing</span>
@@ -244,7 +333,6 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                   </div>
                 </div>
 
-                {/* 4. TABEL VRA RECOMMENDATION */}
                 <div className="bg-white rounded-2xl border border-[#e5e2d6] shadow-sm overflow-hidden mb-8">
                   <div className="p-6 border-b border-[#e5e2d6] flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-emerald-600" />
@@ -282,13 +370,11 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                     </table>
                   </div>
                 </div>
-
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-
     </motion.div>
   );
 }

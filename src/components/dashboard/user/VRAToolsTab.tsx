@@ -68,6 +68,17 @@ const vraHistory = [
   { date: 'Oct 20, 2026', block: 'Block C-02', issue: 'K Deficiency', action: 'Applied KCl +10%', status: 'Completed' },
   { date: 'Oct 15, 2026', block: 'Sector Alpha-1', issue: 'Preventive cycle', action: 'Standard NPK', status: 'Completed' },
   { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
+  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
+  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
+  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
+   { date: 'Oct 25, 2026', block: 'Sector N-14', issue: 'Mg Deficiency', action: 'Applied MgSO₄ +15%', status: 'Completed' },
+  { date: 'Oct 20, 2026', block: 'Block C-02', issue: 'K Deficiency', action: 'Applied KCl +10%', status: 'Completed' },
+  { date: 'Oct 15, 2026', block: 'Sector Alpha-1', issue: 'Preventive cycle', action: 'Standard NPK', status: 'Completed' },
+  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
+  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
+  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
+  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
+  
 ];
 
 interface VRAToolsTabProps {
@@ -211,7 +222,7 @@ export default function VRAToolsTab({ hasData, onStartAnalysis }: VRAToolsTabPro
           </div>
 
           {/* Export Actions */}
-          <div className="bg-white p-5 rounded-[2rem] border border-[#e5e2d6] shadow-sm">
+          {/* <div className="bg-white p-5 rounded-[2rem] border border-[#e5e2d6] shadow-sm">
             <h3 className="text-sm font-extrabold text-[#04211a] mb-4 flex items-center gap-2">
               <Download className="w-4 h-4 text-slate-500" /> Export Prescriptions
             </h3>
@@ -228,12 +239,12 @@ export default function VRAToolsTab({ hasData, onStartAnalysis }: VRAToolsTabPro
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
       {/* 3. RECOMMENDATION HISTORY */}
-      <div className="bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm overflow-hidden">
+      {/* <div className="bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm overflow-hidden">
         <div className="p-6 border-b border-[#e5e2d6]">
           <h3 className="text-base font-extrabold text-[#04211a] flex items-center gap-2">
             <Clock className="w-4 h-4 text-slate-500" /> Recommendation History
@@ -270,7 +281,46 @@ export default function VRAToolsTab({ hasData, onStartAnalysis }: VRAToolsTabPro
             </tbody>
           </table>
         </div>
+      </div> */}
+      <div className="bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm overflow-hidden flex flex-col">
+      <div className="p-6 border-b border-[#e5e2d6]">
+        <h3 className="text-base font-extrabold text-[#04211a] flex items-center gap-2">
+          <Clock className="w-4 h-4 text-slate-500" /> Recommendation History
+        </h3>
       </div>
+      
+      <div className="overflow-x-auto max-h-[320px] overflow-y-auto scroll-smooth">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] text-xs font-bold text-slate-500 uppercase tracking-widest sticky top-0 z-10 shadow-sm">
+              <th className="px-6 py-4 font-bold bg-[#fcfbf7]">Date</th>
+              <th className="px-6 py-4 font-bold bg-[#fcfbf7]">Block / Zone</th>
+              <th className="px-6 py-4 font-bold bg-[#fcfbf7]">Issue</th>
+              <th className="px-6 py-4 font-bold bg-[#fcfbf7]">Action Taken</th>
+              <th className="px-6 py-4 font-bold bg-[#fcfbf7]">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#e5e2d6]">
+            {vraHistory.map((h, i) => (
+              <tr key={i} className="hover:bg-slate-50 transition-colors">
+                <td className="px-6 py-4 text-sm font-medium text-slate-600">{h.date}</td>
+                <td className="px-6 py-4 font-bold text-[#04211a] text-sm">{h.block}</td>
+                <td className="px-6 py-4 text-sm font-semibold text-slate-700">{h.issue}</td>
+                <td className="px-6 py-4 text-sm font-medium text-slate-600">{h.action}</td>
+                <td className="px-6 py-4">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                    h.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {h.status === 'Completed' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                    {h.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
     </motion.div>
   );
 }

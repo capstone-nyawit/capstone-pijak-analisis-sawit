@@ -760,13 +760,13 @@ export default function Dashboard() {
               <div className="flex gap-3">
                 <button 
                   onClick={() => setShowConfirm(false)}
-                  className="flex-1 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold rounded-xl transition-colors cursor-pointer border-none"
+                  className="flex-1 px-4 py-2.5 bg-slate-50 hover:bg-[#04211a] hover:text-white text-slate-600 text-sm font-bold rounded-xl transition-colors cursor-pointer border-none"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={() => navigate('/auth')}
-                  className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer border-none shadow-md shadow-red-600/20"
+                  className="flex-1 px-4 py-2.5 bg-red-700 hover:bg-[#04211a] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer border-none shadow-md shadow-red-600/20"
                 >
                   Sign Out
                 </button>

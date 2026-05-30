@@ -338,7 +338,9 @@ export default function UserOverviewTab({ logs, stats, setActiveTab, triggerNewA
 
         {/* 6. RECENT ANALYSIS / HISTORY */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.6 }}
           className="lg:col-span-3 bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm overflow-hidden flex flex-col"
         >
           <div className="p-6 border-b border-[#e5e2d6] flex justify-between items-center bg-[#fcfbf7]">
@@ -350,48 +352,66 @@ export default function UserOverviewTab({ logs, stats, setActiveTab, triggerNewA
               View All Logs
             </button>
           </div>
-          <div className="overflow-x-auto max-h-[320px] overflow-y-auto">
+          
+          <div className="overflow-x-auto max-h-[320px] overflow-y-auto scroll-smooth">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] sticky top-0 z-10 shadow-sm">
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 pl-6 uppercase tracking-widest w-20">Preview</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Analysis ID</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Block / Zone</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest pr-6">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 pl-6 uppercase tracking-widest w-20 bg-[#fcfbf7]">Preview</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-[#fcfbf7]">Analysis ID</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-[#fcfbf7]">Block / Zone</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest pr-6 bg-[#fcfbf7]">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {logs.slice(0, 3).map((row) => (
-                  <tr key={row.id} className="border-b border-[#e5e2d6]/50 hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="w-12 h-12 rounded-lg bg-slate-200 overflow-hidden relative border border-slate-200 shadow-sm">
-                        <img src={row.thumb} alt={row.id} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                        <div className="absolute inset-0 bg-[#04211a]/10"></div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-bold text-[#04211a] block">{row.id}</span>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{row.date}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-bold text-slate-700 block">{row.block}</span>
-                      <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md mt-1 inline-block">{row.trees} trees • Conf {row.confidence}</span>
-                    </td>
-                    <td className="px-6 py-4 pr-6">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest ${
-                        row.status === 'Completed' ? 'bg-emerald-100/50 border border-emerald-200 text-emerald-700' : 'bg-blue-100/50 border border-blue-200 text-blue-700'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${row.status === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500'}`}></span>
-                        {row.status}
-                      </span>
+                {logs.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-12 text-center text-sm font-medium text-slate-400 bg-white">
+                      No data available
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  logs.map((row) => {
+                    const displayStatus = row.status.toUpperCase() === 'FLAGGED' ? 'Pending' : row.status;
+                    
+                    return (
+                      <tr key={row.id} className="border-b border-[#e5e2d6]/50 hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="w-12 h-12 rounded-lg bg-slate-200 overflow-hidden relative border border-slate-200 shadow-sm">
+                            <img src={row.thumb} alt={row.id} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                            <div className="absolute inset-0 bg-[#04211a]/10"></div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-bold text-[#04211a] block">{row.id}</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{row.date}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-bold text-slate-700 block">{row.block}</span>
+                          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md mt-1 inline-block">
+                            {row.trees} trees • Conf {row.confidence}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 pr-6">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest ${
+                            displayStatus.toLowerCase() === 'completed' 
+                              ? 'bg-emerald-100/50 border border-emerald-200 text-emerald-700' 
+                              : 'bg-amber-100/50 border border-amber-200 text-amber-700'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                              displayStatus.toLowerCase() === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'
+                            }`}></span>
+                            {displayStatus}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
         </motion.div>
-
       </div>
 
       {createPortal(

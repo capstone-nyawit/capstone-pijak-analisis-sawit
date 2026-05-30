@@ -29,7 +29,8 @@ import {
   Edit,
   Trash2,
   User,
-  Settings
+  Settings,
+  TreePalm
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import AdminOverviewTab from '../components/dashboard/admin/AdminOverviewTab';
@@ -183,7 +184,7 @@ export default function AdminDashboard() {
       <div className="w-72 bg-[#04211a] text-white flex flex-col shadow-2xl relative z-20 shrink-0">
         <button onClick={() => setActiveTab('Overview')} className="p-8 flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer text-left focus:outline-none">
           <div className="w-10 h-10 bg-brand-900 rounded-xl flex items-center justify-center shadow-lg shadow-brand-900/10 shrink-0">
-            <Leaf className="text-brand-500 w-6 h-6" />
+            <TreePalm className="text-brand-500 w-6 h-6" />
           </div>
           <div>
             <span className="font-black text-2xl tracking-tighter text-white block">
@@ -369,36 +370,38 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      
       {showConfirm && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 transition-all">
-          <div className="bg-[#021611] border border-emerald-500/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl shadow-black/50">
-
-            <p className="text-white text-sm mb-6 leading-relaxed">
-              Apakah Anda yakin ingin keluar? Sesi Anda saat ini akan diakhiri.
-            </p>
-            
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="px-5 py-2.5 text-sm font-bold text-emerald-500/50 hover:bg-white/5 hover:text-white rounded-xl transition-all"
-              >
-                Batal
-              </button>
+          <div className="fixed inset-0 bg-[#04211a]/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100"
+            >
+              <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <LogOut className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-black text-center text-[#04211a] mb-2">Sign Out</h3>
+              <p className="text-sm font-semibold text-slate-500 text-center mb-6">Are you sure you want to sign out of your account?</p>
               
-              <button
-                onClick={() => {
-                  setShowConfirm(false); 
-                  navigate('/auth');    
-                }}
-                className="px-5 py-2.5 text-sm font-bold bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-xl border border-red-500/20 hover:border-transparent transition-all"
-              >
-                Keluar
-              </button>
-            </div>
-
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowConfirm(false)}
+                  className="flex-1 px-4 py-2.5 bg-slate-50 hover:bg-[#04211a] hover:text-white text-slate-600 text-sm font-bold rounded-xl transition-colors cursor-pointer border-none"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => navigate('/auth')}
+                  className="flex-1 px-4 py-2.5 bg-red-700 hover:bg-[#04211a] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer border-none shadow-md shadow-red-600/20"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
     </div>
     </>
   );
