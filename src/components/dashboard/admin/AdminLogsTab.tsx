@@ -1,11 +1,6 @@
-// /**
-//  * Admin Logs Tab
-//  * Displays the complete set of inference activity records and statuses.
-//  */
-
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Filter, Eye, CheckCircle2, AlertTriangle, X, Image as ImageIcon, MapPin, XCircle } from 'lucide-react';
+import { Search, Filter, CheckCircle2, AlertTriangle, X, Image as ImageIcon, MapPin, XCircle } from 'lucide-react';
 
 interface UserDetail {
   name: string;
@@ -29,6 +24,9 @@ interface AdminLogsTabProps {
 }
 
 type FilterStatus = 'ALL' | 'COMPLETED' | 'PENDING' | 'FAILED';
+
+// URL Gambar Dummy untuk Frontend Preview (Menggunakan Unsplash Lanskap Perkebunan/Hutan)
+const DUMMY_PREVIEW_IMAGE = "https://images.unsplash.com/photo-1516259762381-22954d7d3ad2?auto=format&fit=crop&q=80&w=600";
 
 export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps) {
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
@@ -82,43 +80,38 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
           <div className="relative">
             <button 
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
-                activeFilter !== 'ALL' 
-                  ? 'bg-emerald-600 border-emerald-600 text-white' 
-                  : 'border-[#e5e2d6] text-slate-600 hover:bg-slate-50'
-              }`}
+              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 text-xs font-bold bg-white border-[#e5e2d6] text-slate-600 hover:bg-slate-50`}
             >
-              <Filter className="w-4 h-4" />
+              <Filter className="w-3.5 h-3.5" />
               {activeFilter !== 'ALL' && <span>{activeFilter}</span>}
             </button>
-
             <AnimatePresence>
               {showFilterDropdown && (
                 <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowFilterDropdown(false)} />
+                <div className="fixed inset-0 z-10" onClick={() => setShowFilterDropdown(false)} />
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }} 
                     animate={{ opacity: 1, y: 0 }} 
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-48 bg-white border border-[#e5e2d6] rounded-2xl shadow-xl z-20 py-2 overflow-hidden"
+                    className="absolute right-0 mt-2 w-40 bg-white border border-[#e5e2d6] rounded-xl shadow-xl z-30 py-1 overflow-hidden"
                   >
-                    {(['ALL', 'COMPLETED', 'PENDING', 'FAILED'] as FilterStatus[]).map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => {
-                          setActiveFilter(status);
-                          setShowFilterDropdown(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors border-none bg-transparent cursor-pointer ${
-                          activeFilter === status 
-                            ? 'bg-emerald-50 text-emerald-700' 
-                            : 'text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {status === 'ALL' ? 'ALL STATUS' : status}
-                      </button>
-                    ))}
-                  </motion.div>
+                  {(['ALL', 'COMPLETED', 'PENDING', 'FAILED'] as FilterStatus[]).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => {
+                      setActiveFilter(status);
+                      setShowFilterDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-xs font-bold transition-colors border-none bg-transparent cursor-pointer block ${
+                      activeFilter === status 
+                      ? 'bg-emerald-50 text-emerald-700' 
+                      : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {status === 'ALL' ? 'Show All' : status}
+                    </button>                               
+                  ))}
+                </motion.div>
                 </>
               )}
             </AnimatePresence>
@@ -130,8 +123,9 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
       <div className="overflow-x-auto scroll-smooth flex-1">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] text-xs font-bold text-slate-500 uppercase tracking-widest">
-              <th className="px-6 md:px-8 py-4 font-bold">Analysis ID</th>
+            <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] text-xs font-bold text-slate-500 uppercase tracking-widest sticky top-0 z-10 shadow-sm">
+              <th className="px-6 md:px-8 py-4 font-bold ">Preview</th>
+              <th className="px-6 md:px-8 py-4 font-bold ">Analysis ID</th>
               <th className="px-6 md:px-8 py-4 font-bold">Block / Zone</th>
               <th className="px-6 md:px-8 py-4 font-bold">Operator</th>
               <th className="px-6 md:px-8 py-4 font-bold">Date & Time</th>
@@ -149,6 +143,16 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
 
                 return (
                   <tr key={log.id} className="hover:bg-slate-50 transition-colors group">
+                    {/* Dummy Preview Gambar Kolom */}
+                    <td className="px-6 md:px-8 py-4">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 border border-[#e5e2d6] flex items-center justify-center relative shadow-sm">
+                        <img 
+                          src={DUMMY_PREVIEW_IMAGE} 
+                          alt="Orthophoto Thumbnail" 
+                          className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                        />
+                      </div>
+                    </td>
                     <td className="px-6 md:px-8 py-4">
                       <span className="font-bold text-[#04211a]">{log.id}</span>
                     </td>
@@ -179,12 +183,12 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                     </td>
                     <td className="px-6 md:px-8 py-4 text-right">
                       {displayStatus.toUpperCase() === 'COMPLETED' ? (
+                        /* Tombol Modifikasi Mata menjadi Button Details */
                         <button 
                           onClick={() => { setSelectedLog(log); setVraStatus('PENDING'); }}
-                          className="p-2 text-slate-400 hover:text-emerald-600 transition-colors rounded-lg hover:bg-emerald-50 cursor-pointer"
-                          title="View Details"
+                          className="p-2.5 text-white bg-[#04211a] hover:bg-emerald-950 rounded-xl transition-all shadow-sm font-bold text-xs px-4 cursor-pointer active:scale-95 flex items-center gap-1 inline-block"
                         >
-                          <Eye className="w-4 h-4" />
+                          Details
                         </button>
                       ) : (
                         <button 
@@ -200,7 +204,7 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
               })
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-sm font-semibold text-slate-400">
+                <td colSpan={8} className="px-6 py-12 text-center text-sm font-semibold text-slate-400">
                   No inference records found matching the current search criteria.
                 </td>
               </tr>
@@ -273,16 +277,28 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
 
                 <div className="bg-white rounded-2xl border border-[#e5e2d6] shadow-sm overflow-hidden">
                   <div className="p-6 border-b border-[#e5e2d6]">
-                    <h4 className="text-sm font-extrabold text-[#04211a]">Detection Output (Faster R-CNN)</h4>
+                    <h4 className="text-sm font-extrabold text-[#04211a]">Detection Output</h4>
                   </div>
                   <div className="p-6 flex flex-col lg:flex-row gap-8">
-                    <div className="flex-1 bg-slate-100 rounded-xl min-h-[250px] flex flex-col items-center justify-center border-2 border-dashed border-slate-200 relative overflow-hidden group">
-                      <ImageIcon className="w-10 h-10 text-slate-300 mb-3 group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Orthophoto View</span>
-                      <div className="absolute top-[20%] left-[30%] w-16 h-16 border-[1.5px] border-emerald-500 rounded bg-emerald-500/10"></div>
-                      <div className="absolute bottom-[30%] right-[25%] w-12 h-12 border-[1.5px] border-amber-500 rounded bg-amber-500/10"></div>
-                      <div className="absolute top-[40%] left-[50%] w-20 h-20 border-[1.5px] border-red-500 rounded bg-red-500/10"></div>
-                      <div className="absolute bottom-[10%] left-[20%] w-14 h-14 border-[1.5px] border-teal-500 rounded bg-teal-500/10"></div>
+                    {/* Mengganti komponen kosong dengan Render Preview Gambar Nyata */}
+                    <div className="flex-1 bg-slate-100 rounded-xl min-h-[250px] flex flex-col items-center justify-center border border-slate-200 relative overflow-hidden group shadow-inner">
+                      <img 
+                        src={DUMMY_PREVIEW_IMAGE} 
+                        alt="Orthophoto High Resolution View" 
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      {/* Lapisan overlay agar bounding box deteksi buatan Anda tetap terlihat kontras */}
+                      <div className="absolute inset-0 bg-black/10 transition-opacity group-hover:opacity-0" />
+                      
+                      {/* Bounding box simulasi di atas gambar */}
+                      <div className="absolute top-[20%] left-[30%] w-16 h-16 border-[1.5px] border-emerald-500 rounded bg-emerald-500/20 backdrop-blur-[0.5px]"></div>
+                      <div className="absolute bottom-[30%] right-[25%] w-12 h-12 border-[1.5px] border-amber-500 rounded bg-amber-500/20 backdrop-blur-[0.5px]"></div>
+                      <div className="absolute top-[40%] left-[50%] w-20 h-20 border-[1.5px] border-red-500 rounded bg-red-500/20 backdrop-blur-[0.5px]"></div>
+                      <div className="absolute bottom-[10%] left-[20%] w-14 h-14 border-[1.5px] border-teal-500 rounded bg-teal-500/20 backdrop-blur-[0.5px]"></div>
+                      
+                      <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded backdrop-blur-sm uppercase tracking-wider">
+                        Orthophoto Live View
+                      </span>
                     </div>
                     
                     <div className="flex-1 flex flex-col justify-center space-y-6">
@@ -378,3 +394,4 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
     </motion.div>
   );
 }
+
