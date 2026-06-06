@@ -648,7 +648,7 @@ export default function Dashboard() {
         </header>
 
         {/* Dashboard Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 scroll-smooth bg-[#fcfbf7]">
+        <div data-lenis-prevent className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 scroll-smooth bg-[#fcfbf7]">
           <AnimatePresence mode="wait">
             
             {/* OVERVIEW PANEL */}

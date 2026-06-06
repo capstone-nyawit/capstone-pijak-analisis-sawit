@@ -324,7 +324,7 @@ export default function AdminDashboard() {
         </header>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto scroll-smooth bg-white">
+        <div data-lenis-prevent className="flex-1 overflow-y-auto scroll-smooth bg-white">
           <div className="w-full h-full">
             <AnimatePresence mode="wait">
               {activeTab === 'Overview' && (
