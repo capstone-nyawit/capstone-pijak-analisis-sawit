@@ -1,5 +1,7 @@
 import os
 import httpx
+from dotenv import load_dotenv
+load_dotenv()
 
 def send_system_email(to_email: str, subject: str, html_content: str):
     brevo_api_key = os.getenv("BREVO_API_KEY")
@@ -12,20 +14,21 @@ def send_system_email(to_email: str, subject: str, html_content: str):
                 "content-type": "application/json"
             }
             sender_email = os.getenv("SMTP_USER", "noreply@nyawit.ai")
+            sender_name = os.getenv("SMTP_NAME", "Nyawit AI")
             payload = {
-                "sender": {"name": "Nyawit AI", "email": sender_email},
+                "sender": {"name": sender_name, "email": sender_email},
                 "to": [{"email": to_email}],
                 "subject": subject,
                 "htmlContent": html_content
             }
             response = httpx.post(url, headers=headers, json=payload)
             if response.status_code in [200, 201, 202]:
-                print(f"✅ Email successfully sent to {to_email} via Brevo API")
+                print(f"[OK] Email successfully sent to {to_email} via Brevo API")
                 return True
             else:
-                print(f"❌ Failed via Brevo API: {response.text}")
+                print(f"[FAIL] Failed via Brevo API: {response.text}")
         except Exception as e:
-            print(f"❌ Failed to send email via Brevo API: {e}")
+            print(f"[ERROR] Failed to send email via Brevo API: {e}")
     return False
 
 def send_verification_email(to_email: str, token: str):
@@ -58,7 +61,7 @@ def send_invite_email(to_email: str, invite_code: str, company_name: str):
     return send_system_email(to_email, f"Undangan Bergabung - {company_name}", html)
 
 def send_reset_password_email(to_email: str, token: str):
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip('/')
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip('/')
     reset_link = f"{frontend_url}/reset-password?token={token}"
     html = f"""<html><body>
         <h3>Atur Ulang Password Anda,</h3>
@@ -68,7 +71,7 @@ def send_reset_password_email(to_email: str, token: str):
     return send_system_email(to_email, "Atur Ulang Password - Nyawit AI", html)
 
 def send_approval_email(to_email: str, company_name: str):
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip('/')
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip('/')
     html = f"""<html><body>
         <h3>Selamat!</h3>
         <p>Admin dari organisasi <b>{company_name}</b> telah menyetujui pendaftaran Anda.</p>
@@ -76,3 +79,15 @@ def send_approval_email(to_email: str, company_name: str):
         <p><a href="{frontend_url}/auth" style="background-color: #04211a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Login Sekarang</a></p>
     </body></html>"""
     return send_system_email(to_email, "Pendaftaran Anda Telah Disetujui - Nyawit AI", html)
+
+def send_email_change_link(to_email: str, token: str):
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip('/')
+    reset_link = f"{frontend_url}/change-email?token={token}"
+    html = f"""<html><body>
+        <h3>Konfirmasi Perubahan Email</h3>
+        <p>Anda baru saja meminta untuk mengganti alamat email akun Nyawit AI Anda.</p>
+        <p>Silakan klik tombol di bawah ini untuk mengonfirmasi dan memasukkan email baru Anda:</p>
+        <p><a href="{reset_link}" style="background-color: #04211a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Ganti Email</a></p>
+        <p>Jika Anda tidak merasa melakukan permintaan ini, abaikan email ini.</p>
+    </body></html>"""
+    return send_system_email(to_email, "Konfirmasi Perubahan Email - Nyawit AI", html)

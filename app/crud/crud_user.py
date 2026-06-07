@@ -2,8 +2,10 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.core.security import get_password_hash
 
+from sqlalchemy import func
+
 def get_user_by_email(db: Session, email: str):
-    return db.query(User).filter(User.email == email).first()
+    return db.query(User).filter(func.lower(User.email) == func.lower(email)).first()
 
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()

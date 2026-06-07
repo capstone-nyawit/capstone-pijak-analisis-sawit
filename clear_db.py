@@ -3,13 +3,12 @@ from app.db.session import engine
 from sqlalchemy import text
 
 def main():
-    print("Clearing database tables (users, companies, invitations)...")
+    print("Clearing database tables (users, companies)...")
     try:
         with engine.connect() as connection:
             trans = connection.begin()
             try:
                 connection.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
-                connection.execute(text("TRUNCATE TABLE invitations;"))
                 connection.execute(text("TRUNCATE TABLE users;"))
                 connection.execute(text("TRUNCATE TABLE companies;"))
                 connection.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))

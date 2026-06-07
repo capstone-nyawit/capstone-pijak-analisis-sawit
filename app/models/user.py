@@ -13,4 +13,4 @@ class User(Base):
     role = Column(String(20), default="user")
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     status = Column(String(20), default="active") # active, pending
-    is_active = Column(Boolean, default=True)
+    profile_photo = Column(String(255), nullable=True)

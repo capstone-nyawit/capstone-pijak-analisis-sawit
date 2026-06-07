@@ -1,4 +1,6 @@
 import logging
+from dotenv import load_dotenv
+load_dotenv()
 
 from fastapi import FastAPI
 
@@ -14,7 +16,18 @@ def create_app() -> FastAPI:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
+    from fastapi.middleware.cors import CORSMiddleware
+
     application = FastAPI(title=settings.app_name)
+    
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Adjust this to specific frontend URL in production
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
     application.include_router(api_router)
     return application
 

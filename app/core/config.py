@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256")
     access_token_expire_minutes: int = Field(default=60 * 24 * 7) # 7 days
 
+    redis_host: str = Field(default="localhost", validation_alias="REDIS_HOST")
+    redis_port: int = Field(default=6379, validation_alias="REDIS_PORT")
+    redis_db: int = Field(default=0, validation_alias="REDIS_DB")
+    redis_password: str | None = Field(default=None, validation_alias="REDIS_PASSWORD")
+
+    cloudinary_cloud_name: str = Field(default="dkrxyn8i5", validation_alias="CLOUDINARY_CLOUD_NAME")
+    cloudinary_api_key: str = Field(default="531426464174435", validation_alias="CLOUDINARY_API_KEY")
+    cloudinary_api_secret: str = Field(default="_5Gz60qB3OCQ62ONDcvUaVIWy8g", validation_alias="CLOUDINARY_API_SECRET")
 
     @property
     def database_url(self) -> str:

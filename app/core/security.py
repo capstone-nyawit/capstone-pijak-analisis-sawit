@@ -41,6 +41,7 @@ def get_current_user_token(token: str = Depends(oauth2_scheme)):
         role: str = payload.get("role")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
+            
     except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -72,7 +73,7 @@ def verify_verification_token(token: str) -> str:
 
 def create_reset_token(email: str) -> str:
     settings = get_settings()
-    expire = datetime.now(timezone.utc) + timedelta(hours=1)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=10)
     to_encode = {"exp": expire, "sub": email, "type": "reset"}
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
     return encoded_jwt
@@ -90,3 +91,24 @@ def verify_reset_token(token: str) -> str:
         raise HTTPException(status_code=400, detail="Token reset telah kedaluwarsa")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=400, detail="Token reset tidak valid")
+
+def create_email_change_token(email: str) -> str:
+    settings = get_settings()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=10)
+    to_encode = {"exp": expire, "sub": email, "type": "email_change"}
+    encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return encoded_jwt
+
+def verify_email_change_token(token: str) -> str:
+    settings = get_settings()
+    try:
+        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        email: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        if email is None or token_type != "email_change":
+            raise HTTPException(status_code=400, detail="Token ganti email tidak valid")
+        return email
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Token ganti email telah kedaluwarsa")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=400, detail="Token ganti email tidak valid")
