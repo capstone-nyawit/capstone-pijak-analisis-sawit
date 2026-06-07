@@ -3,6 +3,7 @@
  * Handles UAV/drone image upload, drag-and-drop validation, and analysis execution.
  */
 
+import React from 'react';
 import { motion } from 'motion/react';
 import { 
   PlaySquare, Loader2, ImageIcon, CheckCircle2, 

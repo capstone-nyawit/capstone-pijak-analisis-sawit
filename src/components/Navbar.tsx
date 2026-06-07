@@ -73,7 +73,7 @@ export default function Navbar() {
           <div className="md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="text-brand-950 p-2"
+              className={`p-2 transition-colors duration-300 ${scrolled ? 'text-brand-950' : 'text-white'}`}
             >
               {isOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
             </button>

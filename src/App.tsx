@@ -1,9 +1,16 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import { useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import ChangeEmail from './pages/ChangeEmail';
 import { motion, useScroll, useSpring } from 'motion/react';
 import Lenis from 'lenis';
 
@@ -69,6 +76,8 @@ export default function App() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/change-email" element={<ChangeEmail />} />
       </Routes>
     </Router>
   );

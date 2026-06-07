@@ -34,14 +34,39 @@ interface Log {
 
 interface AdminOverviewTabProps {
   logs: Log[];
+  users: any[];
   getUserDetails: (userName: string) => UserDetail;
   setActiveTab: (tab: 'Overview' | 'Logs' | 'Users' | 'Reports') => void;
+  stats?: any;
 }
 
-export default function AdminOverviewTab({ logs, getUserDetails, setActiveTab }: AdminOverviewTabProps) {
+export default function AdminOverviewTab({ logs, users = [], getUserDetails, setActiveTab, stats }: AdminOverviewTabProps) {
   const navigate = useNavigate();
   const [reviewPanelLog, setReviewPanelLog] = useState<Log | null>(null);
   const [isTreeModalOpen, setIsTreeModalOpen] = useState(false);
+
+  const dynamicTreeData = stats?.classDistribution?.map((cd: any) => {
+    let bg = 'bg-emerald-500';
+    let text = 'text-emerald-600';
+    if (cd.name === 'Small') { bg = 'bg-teal-500'; text = 'text-teal-600'; }
+    if (cd.name === 'Yellow') { bg = 'bg-amber-500'; text = 'text-amber-600'; }
+    if (cd.name === 'Dead') { bg = 'bg-red-500'; text = 'text-red-600'; }
+    
+    // Default percentage if stats isn't fully loaded or total is 0
+    let pct = 0;
+    const totalRaw = stats?.kpiStats?.find((k: any) => k.label === 'Total Trees')?.val?.replace(/,/g, '');
+    const total = totalRaw ? parseInt(totalRaw) : 0;
+    if (total > 0) {
+      pct = Math.round((cd.value / total) * 100);
+    }
+    
+    return {
+      name: cd.name === 'Small' ? 'Small Canopy' : cd.name === 'Yellow' ? 'Yellowing / Nutrient Deficient' : cd.name === 'Dead' ? 'Dead / Missing' : 'Healthy Canopy',
+      value: cd.value,
+      color: cd.color,
+      bg, text, percent: `${pct}%`
+    };
+  }) || TREE_DATA;
 
   const handleCardClick = (label: string) => {
     switch (label) {
@@ -68,7 +93,7 @@ export default function AdminOverviewTab({ logs, getUserDetails, setActiveTab }:
         {[
           { label: 'Total Analyses', val: '1,248', trend: '+12 this week', icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Trees Analyzed', val: '142.5k', trend: '+4.2k this week', icon: Sprout, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Active Users', val: '24', trend: '2 currently online', icon: Users, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Active Users', val: users.filter(u => u.status === 'Active').length.toString(), trend: `${users.filter(u => u.status === 'Active').length} active`, icon: Users, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'High-Risk Alerts', val: '3', trend: 'Needs attention', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
         ].map((stat, i) => (
           <div 
@@ -80,7 +105,7 @@ export default function AdminOverviewTab({ logs, getUserDetails, setActiveTab }:
                   <stat.icon className={`w-5 h-5 ${stat.color}`} />
                 </div>
              </div>
-             <h4 className="text-3xl font-black text-[#04211a] mb-1">{stat.val}</h4>
+             <h3 className="text-3xl font-black text-[#04211a] tracking-tight">{stats?.kpiStats?.find((k:any) => k.label === 'Total Trees')?.val || '0'}</h3>
              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{stat.label}</p>
              <div className="mt-4 text-xs font-semibold text-slate-400">{stat.trend}</div>
           </div>
@@ -130,7 +155,7 @@ export default function AdminOverviewTab({ logs, getUserDetails, setActiveTab }:
               onClick={() => setActiveTab('Logs')} 
               className="text-xs font-bold text-slate-500 hover:text-[#04211a] transition-colors flex items-center gap-2 cursor-pointer"
             >
-              Show All 1,248 Logs <ArrowRight className="w-3.5 h-3.5" />
+              Show All {logs.length} Logs <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -147,42 +172,17 @@ export default function AdminOverviewTab({ logs, getUserDetails, setActiveTab }:
             Overview Plantation (Tree)
           </h2>
           <div className="flex-1 flex flex-col justify-center space-y-5 relative z-10">
-            <div>
-              <div className="flex justify-between text-xs font-bold text-slate-700 mb-2">
-                <span>Healthy Canopy</span>
-                <span className="text-emerald-600">70%</span>
+            {dynamicTreeData.map((item: any) => (
+              <div key={item.name}>
+                <div className="flex justify-between text-xs font-bold text-slate-700 mb-2">
+                  <span>{item.name}</span>
+                  <span className={item.text}>{item.percent}</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-2">
+                  <div className={`${item.bg} h-2 rounded-full`} style={{ width: item.percent }}></div>
+                </div>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '70%' }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-xs font-bold text-slate-700 mb-2">
-                <span>Small Canopy</span>
-                <span className="text-teal-600">12%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-teal-500 h-2 rounded-full" style={{ width: '12%' }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-xs font-bold text-slate-700 mb-2">
-                <span>Yellowing / Nutrient Deficient</span>
-                <span className="text-amber-600">14%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-amber-500 h-2 rounded-full" style={{ width: '14%' }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-xs font-bold text-slate-700 mb-2">
-                <span>Dead / Missing</span>
-                <span className="text-red-600">4%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-red-500 h-2 rounded-full" style={{ width: '4%' }}></div>
-              </div>
-            </div>
+            ))}
           </div>
           <div className="mt-8 pt-6 border-t border-slate-100 relative z-10">
             <p className="text-xs text-slate-500 font-medium leading-relaxed">

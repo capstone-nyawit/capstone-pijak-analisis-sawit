@@ -2,8 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-
-import { useState, useRef, ChangeEvent, useEffect } from 'react';
+import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, 
@@ -46,7 +45,8 @@ import {
   Beaker,
   Leaf,
   Mail,
-  Building
+  Building,
+  Menu
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
@@ -176,9 +176,30 @@ export default function Dashboard() {
 
   // User profile states
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [email, setEmail] = useState("budi.s@nyawit.ai");
-  const [company, setCompany] = useState("PT. Sawit Nusantara");
-  const [fullName, setFullName] = useState("Budi Santoso");
+  const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [isOrganizationUser, setIsOrganizationUser] = useState(false);
+
+  useEffect(() => {
+    const loadUserData = () => {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        setFullName(u.full_name || u.username || "Unknown User");
+        setEmail(u.email || "");
+        setCompany(u.company_name || "PT. Sawit Nusantara");
+        setIsOrganizationUser(!!u.company_id || !!u.company_name);
+        setProfilePhoto(u.profile_photo || null);
+      }
+    };
+    
+    loadUserData();
+    window.addEventListener('profile_updated', loadUserData);
+    return () => {
+      window.removeEventListener('profile_updated', loadUserData);
+    };
+  }, []);
 
   const inboxRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -197,31 +218,75 @@ export default function Dashboard() {
   }, []);
 
   const showNotification = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setNotifications(prev => [...prev, { id, message, type }]);
+    const tempId = Math.random().toString(36).substring(2, 9);
+    setNotifications(prev => [...prev, { id: tempId, message, type }]);
 
-    // Auto prepend to persistent inbox notifications dropdown
-    const newInboxItem = {
-      id,
-      message,
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      read: false,
-      type: type === 'error' ? 'info' : type
-    };
-    setInboxNotifications(prev => [newInboxItem, ...prev]);
+    // Persist to backend so it shows up after refresh
+    const token = localStorage.getItem('token');
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    if (token) {
+      fetch(`${apiUrl}/user-notifications/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, type })
+      }).then(res => res.ok ? res.json() : null).then(data => {
+        if (data) {
+          const newInboxItem = {
+            id: data.id.toString(),
+            message,
+            time: new Date(data.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            read: false,
+            type
+          };
+          setInboxNotifications(prev => [newInboxItem, ...prev]);
+        }
+      }).catch(() => {
+        // Fallback: add local-only inbox item
+        const newInboxItem = {
+          id: tempId,
+          message,
+          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          read: false,
+          type
+        };
+        setInboxNotifications(prev => [newInboxItem, ...prev]);
+      });
+    }
 
     setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      setNotifications(prev => prev.filter(n => n.id !== tempId));
     }, 4000);
   };
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
     setInboxNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/user-notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const markAllAsRead = (e: React.MouseEvent) => {
+  const markAllAsRead = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setInboxNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/user-notifications/read-all`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Interactive Live Data States
@@ -278,6 +343,109 @@ export default function Dashboard() {
     yellowing: 0,
     deadMissing: 0
   });
+
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+
+  // WebSocket Integration for Real-time presence
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    const wsUrl = apiUrl.replace('http', 'ws') + `/ws/presence?token=${token}`;
+    
+    const ws = new WebSocket(wsUrl);
+    
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const headers = { 'Authorization': `Bearer ${token}` };
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
+        const [statsRes, logsRes, reportsRes, notifRes] = await Promise.all([
+          fetch(`${apiUrl}/dashboard/stats`, { headers }),
+          fetch(`${apiUrl}/logs/`, { headers }),
+          fetch(`${apiUrl}/reports/`, { headers }),
+          fetch(`${apiUrl}/user-notifications/`, { headers })
+        ]);
+
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setDashboardStats(statsData);
+          if (statsData.kpiStats && statsData.kpiStats.length > 0) {
+            const t = statsData.kpiStats.find((k: any) => k.label === 'Total Trees')?.val.replace(/,/g, '') || "0";
+            const h = statsData.kpiStats.find((k: any) => k.label === 'Healthy')?.val.replace(/,/g, '') || "0";
+            const s = statsData.kpiStats.find((k: any) => k.label === 'Small Canopy')?.val.replace(/,/g, '') || "0";
+            const y = statsData.kpiStats.find((k: any) => k.label === 'Yellowing')?.val.replace(/,/g, '') || "0";
+            const d = statsData.kpiStats.find((k: any) => k.label === 'Dead / Missing')?.val.replace(/,/g, '') || "0";
+            
+            setStats({
+              totalTrees: parseInt(t),
+              healthy: parseInt(h),
+              smallCanopy: parseInt(s),
+              yellowing: parseInt(y),
+              deadMissing: parseInt(d)
+            });
+          }
+        }
+        
+        if (logsRes.ok) {
+          const logsData = await logsRes.json();
+          const mappedLogs = logsData.map((l: any) => ({
+            id: l.log_code,
+            date: new Date(l.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            block: l.block_name,
+            trees: l.trees_count,
+            status: l.status,
+            confidence: `${l.confidence_score}%`,
+            thumb: 'https://images.unsplash.com/photo-1627883907153-61b453e00cc2?auto=format&fit=crop&w=100&q=80'
+          }));
+          setLogs(mappedLogs);
+        }
+
+        if (reportsRes.ok) {
+          const reportsData = await reportsRes.json();
+          const mappedReports = reportsData.map((r: any) => ({
+            id: r.report_code,
+            block: r.name,
+            date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            totalTrees: 0, 
+            healthy: 0,
+            yellowing: 0,
+            dead: 0,
+            analysisDate: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            thumb: 'https://images.unsplash.com/photo-1590682121342-eb4c798725ee?auto=format&fit=crop&w=150&q=80',
+            satelliteMap: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=400&q=80',
+            highPriority: []
+          }));
+          setReports(mappedReports);
+        }
+
+        if (notifRes.ok) {
+          const notifData = await notifRes.json();
+          const mappedNotif = notifData.map((n: any) => ({
+            id: n.id.toString(),
+            message: n.message,
+            time: new Date(n.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            read: n.is_read,
+            type: n.type || 'info'
+          }));
+          setInboxNotifications(mappedNotif);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   // Inference Form States
   const [image, setImage] = useState<string | null>(null);
@@ -434,6 +602,8 @@ export default function Dashboard() {
   ];
 
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <>
       {/* TOP FLOATING NOTIFICATION SYSTEM */}
@@ -474,8 +644,16 @@ export default function Dashboard() {
         }
       `}</style>
       
+      {/* Sidebar Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar ------------------------------------------------- */}
-      <div className="w-72 bg-[#04211a] text-white flex flex-col shadow-2xl relative z-20 shrink-0">
+      <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#04211a] text-white flex flex-col shadow-2xl transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 shrink-0`}>
         <button onClick={() => setActiveTab('Overview')} className="p-8 flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer text-left focus:outline-none">
           <div className="w-10 h-10 bg-brand-900 rounded-xl flex items-center justify-center shadow-lg shadow-brand-900/10 shrink-0">
             <TreePalm className="text-brand-500 w-6 h-6" />
@@ -492,7 +670,10 @@ export default function Dashboard() {
           {menu.map((item) => (
             <button 
               key={item.label}
-              onClick={() => setActiveTab(item.value)}
+              onClick={() => {
+                setActiveTab(item.value);
+                setIsMobileMenuOpen(false);
+              }}
               className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${
                 item.active 
                   ? 'bg-emerald-600/20 text-emerald-400 shadow-inner border border-emerald-500/20' 
@@ -512,9 +693,15 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         
         {/* Topbar */}
-        <header className="h-20 bg-white border-b border-[#e5e2d6] flex items-center justify-between px-8 z-30 shrink-0 sticky top-0">
-          <div className="flex items-center gap-8">
-            <h1 className="text-2xl font-extrabold text-[#04211a] tracking-tight">
+        <header className="h-20 bg-white border-b border-[#e5e2d6] flex items-center justify-between px-4 md:px-8 z-30 shrink-0 sticky top-0">
+          <div className="flex items-center gap-4">
+            <button 
+              className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-xl"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <h1 className="text-xl md:text-2xl font-extrabold text-[#04211a] tracking-tight">
               {activeTab === 'Settings' ? 'Account Settings' : 'Analysis Dashboard'}
             </h1>
           </div>
@@ -698,7 +885,6 @@ export default function Dashboard() {
             {/* TREE HEALTH TAB */}
             {activeTab === 'Tree Health' && (
               <TreeHealthTab
-                key="tree-health"
                 stats={stats}
                 hasData={logs.length > 0}
                 onStartAnalysis={() => setActiveTab('Inference')}
@@ -708,7 +894,6 @@ export default function Dashboard() {
             {/* VRA TOOLS TAB */}
             {activeTab === 'VRA' && (
               <VRAToolsTab
-                key="vra-tools"
                 hasData={logs.length > 0}
                 onStartAnalysis={() => setActiveTab('Inference')}
               />
@@ -716,7 +901,7 @@ export default function Dashboard() {
 
             {/* SETTINGS TAB */}
             {activeTab === 'Settings' && (
-              <AccountSettingsTab key="settings" showCompany={false} />
+              <AccountSettingsTab showCompany={isOrganizationUser} />
             )}
 
           </AnimatePresence>
@@ -777,6 +962,34 @@ export default function Dashboard() {
       </AnimatePresence>
 
     </div>
+
+      {/* Mobile FAB - New Analysis */}
+      <button
+        onClick={triggerNewAnalysis}
+        className="md:hidden fixed bottom-24 right-5 z-40 flex items-center gap-2 bg-[#04211a] text-white pl-4 pr-5 py-3.5 rounded-full text-sm font-bold shadow-2xl shadow-[#04211a]/40 active:scale-95 transition-all"
+      >
+        <PlaySquare className="w-5 h-5 text-emerald-400" />
+        New Analysis
+      </button>
+
+      {/* Mobile Bottom Nav Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#e5e2d6] flex items-center justify-around px-2 py-2 safe-area-pb shadow-[0_-4px_20px_rgba(4,33,26,0.06)]">
+        {menu.slice(0, 5).map((item) => (
+          <button
+            key={item.label}
+            onClick={() => { setActiveTab(item.value); setIsMobileMenuOpen(false); }}
+            className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${
+              item.active ? 'text-emerald-700' : 'text-slate-400'
+            }`}
+          >
+            <item.icon className={`w-5 h-5 ${item.active ? 'text-emerald-700' : 'text-slate-400'}`} />
+            <span className={`text-[9px] font-black uppercase tracking-wider ${item.active ? 'text-emerald-700' : 'text-slate-400'}`}>
+              {item.label.length > 7 ? item.label.slice(0, 6) + '…' : item.label}
+            </span>
+          </button>
+        ))}
+      </nav>
+
     </>
   );
 }

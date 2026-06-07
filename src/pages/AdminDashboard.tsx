@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, 
@@ -30,7 +30,8 @@ import {
   Trash2,
   User,
   Settings,
-  TreePalm
+  TreePalm,
+  Menu
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import AdminOverviewTab from '../components/dashboard/admin/AdminOverviewTab';
@@ -71,12 +72,31 @@ export default function AdminDashboard() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [notifications, setNotifications] = useState<{ id: string; message: string; type: 'success' | 'info' | 'error' }[]>([]);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
-  const [inboxNotifications, setInboxNotifications] = useState([
-    { id: 'join-1', message: 'Pengguna baru (Budi Santoso) berhasil bergabung ke organisasi menggunakan kode undangan.', time: '10:05 AM', read: false, type: 'success' }
-  ]);
+  const [inboxNotifications, setInboxNotifications] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const inboxRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadUserData = () => {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          setCurrentUser(JSON.parse(userStr));
+        } catch(e) {}
+      }
+    };
+    loadUserData();
+    window.addEventListener('profile_updated', loadUserData);
+    return () => {
+      window.removeEventListener('profile_updated', loadUserData);
+    };
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -109,13 +129,35 @@ export default function AdminDashboard() {
     }, 4000);
   };
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
     setInboxNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const markAllAsRead = (e: React.MouseEvent) => {
+  const markAllAsRead = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setInboxNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/notifications/read-all`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const triggerDownload = (reportName: string) => {
@@ -127,13 +169,187 @@ export default function AdminDashboard() {
     role: u.role === 'Manager' ? 'Admin' : 'User'
   })));
 
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+        const res = await fetch(`${apiUrl}/users`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          const mappedUsers = data.map((u: any) => ({
+            id: u.id.toString(),
+            name: u.full_name || u.username || 'Unknown',
+            email: u.email,
+            role: u.role === 'admin' ? 'Admin' : 'User',
+            status: u.status === 'pending' ? 'Pending' : (u.is_online ? 'Active' : 'Offline'),
+            lastActive: u.last_active || 'Unknown'
+          }));
+          setUsersList(mappedUsers);
+        }
+
+        const [statsRes, logsRes, reportsRes, notifRes] = await Promise.all([
+          fetch(`${apiUrl}/dashboard/stats`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${apiUrl}/logs/`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${apiUrl}/reports/`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${apiUrl}/notifications/`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+
+        if (statsRes.ok) {
+          setDashboardStats(await statsRes.json());
+        }
+
+        if (logsRes.ok) {
+          const logsData = await logsRes.json();
+          const mappedLogs = logsData.map((l: any) => ({
+            id: l.log_code,
+            user: l.user_name,
+            role: l.user_role,
+            date: new Date(l.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            block: l.block_name,
+            trees: l.trees_count,
+            confidence: l.confidence_score,
+            status: l.status
+          }));
+          setLogs(mappedLogs);
+        }
+
+        if (reportsRes.ok) {
+          const reportsData = await reportsRes.json();
+          const mappedReports = reportsData.map((r: any) => ({
+            id: r.report_code,
+            name: r.name,
+            type: r.type,
+            date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            size: r.size || 'N/A'
+          }));
+          setReports(mappedReports);
+        }
+
+        if (notifRes.ok) {
+          const notifData = await notifRes.json();
+          const mappedNotif = notifData.map((n: any) => ({
+            id: n.id.toString(),
+            message: n.message,
+            time: new Date(n.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            read: n.is_read,
+            type: n.type || 'info'
+          }));
+          setInboxNotifications(mappedNotif);
+        }
+      } catch (err) {
+        console.error("Failed to fetch admin data", err);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  // WebSocket Integration for Real-time updates
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    // Determine ws:// or wss:// based on http/https
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    const wsUrl = apiUrl.replace('http', 'ws') + `/ws/presence?token=${token}`;
+    
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'status_update' || data.type === 'user_joined' || data.type === 'user_approved' || data.type === 'refresh_users') {
+          // Re-fetch users to get the latest list when a presence/join event occurs
+          const fetchUsers = async () => {
+            const res = await fetch(`${apiUrl}/users`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+              const usersData = await res.json();
+              const mappedUsers = usersData.map((u: any) => ({
+                id: u.id.toString(),
+                name: u.full_name || u.username || 'Unknown',
+                email: u.email,
+                role: u.role === 'admin' ? 'Admin' : 'User',
+                status: u.status === 'pending' ? 'Pending' : (u.is_online ? 'Active' : 'Offline'),
+                lastActive: u.last_active || 'Unknown'
+              }));
+              setUsersList(mappedUsers);
+            }
+          };
+          fetchUsers();
+        }
+
+        if (data.type === 'new_notification') {
+          const fetchNotif = async () => {
+             const notifRes = await fetch(`${apiUrl}/notifications/`, { headers: { 'Authorization': `Bearer ${token}` } });
+             if (notifRes.ok) {
+                 const notifData = await notifRes.json();
+                 const mappedNotif = notifData.map((n: any) => ({
+                   id: n.id.toString(),
+                   message: n.message,
+                   time: new Date(n.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                   read: n.is_read,
+                   type: n.type || 'info'
+                 }));
+                 setInboxNotifications(mappedNotif);
+             }
+          };
+          fetchNotif();
+        }
+      } catch(e) {
+        console.error("Failed to parse websocket message", e);
+      }
+    };
+    
+    return () => {
+      ws.close();
+    };
+  }, []);
+
   const handleRoleChange = (userId: string, newRole: string) => {
     setUsersList(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
   };
 
-  const handleDeleteUser = (userId: string) => {
-    setUsersList(prev => prev.filter(u => u.id !== userId));
-    showNotification('Pengguna telah berhasil dihapus dari organisasi.', 'success');
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const res = await fetch(`${apiUrl}/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setUsersList(prev => prev.filter(u => u.id !== userId));
+        showNotification('Pengguna telah berhasil dihapus dari organisasi.', 'success');
+      }
+    } catch (err) {
+      console.error("Failed to delete user", err);
+    }
+  };
+
+  const handleApproveUser = async (userId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const res = await fetch(`${apiUrl}/users/${userId}/approve`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setUsersList(prev => prev.map(u => u.id === userId ? { ...u, status: 'Active' } : u));
+        showNotification('Pengguna telah berhasil disetujui.', 'success');
+      }
+    } catch (err) {
+      console.error("Failed to approve user", err);
+    }
   };
 
   const getUserDetails = (userName: string) => {
@@ -180,46 +396,67 @@ export default function AdminDashboard() {
 
       <div className="min-h-screen bg-[#fcfbf7] flex font-sans text-slate-800 relative">
       
-      {/* Sidebar ------------------------------------------------- */}
-      <div className="w-72 bg-[#04211a] text-white flex flex-col shadow-2xl relative z-20 shrink-0">
-        <button onClick={() => setActiveTab('Overview')} className="p-8 flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer text-left focus:outline-none">
-          <div className="w-10 h-10 bg-brand-900 rounded-xl flex items-center justify-center shadow-lg shadow-brand-900/10 shrink-0">
-            <TreePalm className="text-brand-500 w-6 h-6" />
-          </div>
-          <div>
-            <span className="font-black text-2xl tracking-tighter text-white block">
-              Nyawit<span className="text-brand-500">AI</span>
-            </span>
-            <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest block opacity-80 mt-0.5">Admin Console</span>
-          </div>
-        </button>
+      {/* Sidebar Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
-        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto mt-4">
-          {menu.map((item) => (
-            <button 
-              key={item.label}
-              onClick={() => setActiveTab(item.value)}
-              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${
-                activeTab === item.value 
-                  ? 'bg-emerald-600/20 text-emerald-400 shadow-inner border border-emerald-500/20' 
-                  : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <item.icon className={`w-5 h-5 ${activeTab === item.value ? 'text-emerald-400' : 'opacity-70'}`} />
-              {item.label}
-            </button>
-          ))}
-        </nav>
+      {/* Sidebar ------------------------------------------------- */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#04211a] text-white flex flex-col shadow-2xl transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 shrink-0`}>
+        <div className="w-72 flex flex-col h-full">
+          <button onClick={() => { setActiveTab('Overview'); setIsMobileMenuOpen(false); }} className="p-8 flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer text-left focus:outline-none">
+            <div className="w-10 h-10 bg-brand-900 rounded-xl flex items-center justify-center shadow-lg shadow-brand-900/10 shrink-0">
+              <TreePalm className="text-brand-500 w-6 h-6" />
+            </div>
+            <div>
+              <span className="font-black text-2xl tracking-tighter text-white block">
+                Nyawit<span className="text-brand-500">AI</span>
+              </span>
+              <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest block opacity-80 mt-0.5">Admin Console</span>
+            </div>
+          </button>
+
+          <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto mt-4">
+            {menu.map((item) => (
+              <button 
+                key={item.label}
+                onClick={() => {
+                  setActiveTab(item.value);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all ${
+                  activeTab === item.value 
+                    ? 'bg-emerald-600/20 text-emerald-400 shadow-inner border border-emerald-500/20' 
+                    : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <item.icon className={`w-5 h-5 ${activeTab === item.value ? 'text-emerald-400' : 'opacity-70'}`} />
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
       </div>
 
       {/* Main Content ------------------------------------------ */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         
         {/* Topbar */}
-        <header className="h-20 bg-white border-b border-[#e5e2d6] flex items-center justify-between px-8 z-30 shrink-0 sticky top-0">
-          <h1 className="text-2xl font-extrabold text-[#04211a] tracking-tight">
-            {activeTab === 'Settings' ? 'Account Settings' : activeTab}
-          </h1>
+        <header className="h-20 bg-white border-b border-[#e5e2d6] flex items-center justify-between px-4 md:px-8 z-30 shrink-0 sticky top-0">
+          <div className="flex items-center gap-4">
+            <button 
+              className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-xl"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <h1 className="text-xl md:text-2xl font-extrabold text-[#04211a] tracking-tight">
+              {activeTab === 'Settings' ? 'Account Settings' : activeTab}
+            </h1>
+          </div>
           
           <div className="flex items-center gap-4">
             <div className="relative" ref={inboxRef}>
@@ -279,12 +516,18 @@ export default function AdminDashboard() {
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full border border-[#e5e2d6] hover:bg-slate-50 transition-all cursor-pointer active:scale-95"
               >
-                <div className="w-8 h-8 bg-[#04211a]/5 rounded-full flex items-center justify-center text-[#04211a] font-bold text-xs uppercase border border-[#e5e2d6]">
-                  A
+                <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border border-[#e5e2d6] shrink-0 bg-[#04211a]/5">
+                  {currentUser?.profile_photo ? (
+                    <img src={currentUser.profile_photo} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[#04211a] font-bold text-xs uppercase">
+                      {currentUser?.full_name?.charAt(0) || 'U'}
+                    </span>
+                  )}
                 </div>
                 <div className="hidden sm:flex flex-col items-start">
-                  <span className="text-xs font-bold text-[#04211a] leading-none">Profile</span>
-                  <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">#NYA-ADMIN</span>
+                  <span className="text-xs font-bold text-[#04211a] leading-none">{currentUser?.full_name || 'Profile'}</span>
+                  <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">#{currentUser?.role || 'USER'}</span>
                 </div>
                 <ChevronDown className="w-4 h-4 text-slate-400 ml-1" />
               </button>
@@ -292,8 +535,8 @@ export default function AdminDashboard() {
               {isProfileOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-[#e5e2d6] shadow-[0_15px_30px_rgba(4,33,26,0.15)] z-50 overflow-hidden py-1">
                   <div className="p-4 border-b border-[#e5e2d6] bg-[#fcfbf7]">
-                    <span className="text-sm font-bold text-[#04211a] block">Admin Profile</span>
-                    <span className="text-[10px] text-slate-500 font-medium">Superuser</span>
+                    <span className="text-sm font-bold text-[#04211a] block truncate">{currentUser?.full_name || 'User Profile'}</span>
+                    <span className="text-[10px] text-slate-500 font-medium truncate block">{currentUser?.email || 'user@example.com'}</span>
                   </div>
                   <div className="p-1">
                     <button 
@@ -330,16 +573,18 @@ export default function AdminDashboard() {
               {activeTab === 'Overview' && (
                 <div key="overview">
                   <AdminOverviewTab 
-                    logs={mockLogs} 
+                    logs={logs} 
+                    users={usersList}
                     getUserDetails={getUserDetails} 
                     setActiveTab={setActiveTab} 
+                    stats={dashboardStats}
                   />
                 </div>
               )}
               {activeTab === 'Logs' && (
                 <div key="logs" className="h-full">
                   <AdminLogsTab 
-                    logs={mockLogs} 
+                    logs={logs} 
                     getUserDetails={getUserDetails} 
                   />
                 </div>
@@ -347,16 +592,17 @@ export default function AdminDashboard() {
               {activeTab === 'Users' && (
                 <div key="users" className="h-full">
                   <AdminUsersTab 
-                    usersList={usersList} 
-                    handleRoleChange={handleRoleChange} 
-                    handleDeleteUser={handleDeleteUser}
+                    usersList={usersList}
+                    handleRoleChange={handleRoleChange}
+                    handleApprove={handleApproveUser}
+                    handleDelete={handleDeleteUser}
                   />
                 </div>
               )}
               {activeTab === 'Reports' && (
                 <div key="reports">
                   <AdminReportsTab 
-                    reports={mockReports} 
+                    reports={reports} 
                     triggerDownload={triggerDownload}
                   />
                 </div>

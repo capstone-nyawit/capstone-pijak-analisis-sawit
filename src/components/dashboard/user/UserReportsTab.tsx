@@ -170,7 +170,7 @@ export default function UserReportsTab({
 
             {/* Grid Ringkasan & Grafik Lingkaran */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center p-6 bg-[#fcfbf7] rounded-2xl border border-[#e5e2d6] relative">
-              <div className="md:col-span-7 grid grid-cols-2 gap-y-5 gap-x-4 border-r border-[#e5e2d6]/80 pr-4">
+              <div className="md:col-span-7 grid grid-cols-2 gap-y-5 gap-x-4 md:border-r border-[#e5e2d6]/80 md:pr-4">
                 <div>
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Trees</span>
                   <span className="text-lg font-black text-[#04211a]">{selectedReport.totalTrees.toLocaleString()}</span>

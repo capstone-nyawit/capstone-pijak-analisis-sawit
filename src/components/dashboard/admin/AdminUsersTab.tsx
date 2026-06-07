@@ -1,11 +1,6 @@
-/**
- * Admin Users Tab
- * Manages users and allows switching user roles between User and Admin.
- */
-
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Copy, X, Clock, CheckCircle2 } from 'lucide-react';
+import { Trash2, Copy, CheckCircle2 } from 'lucide-react';
 
 interface User {
   id: string;
@@ -19,45 +14,98 @@ interface User {
 interface AdminUsersTabProps {
   usersList: User[];
   handleRoleChange: (userId: string, newRole: string) => void;
-  handleDeleteUser: (userId: string) => void;
+  handleApprove: (userId: string) => void;
+  handleDelete: (userId: string) => void;
 }
 
-export default function AdminUsersTab({ usersList, handleRoleChange, handleDeleteUser }: AdminUsersTabProps) {
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+export default function AdminUsersTab({ usersList, handleRoleChange, handleApprove, handleDelete }: AdminUsersTabProps) {
   const [inviteCode, setInviteCode] = useState('');
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
+  const [expireAt, setExpireAt] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
-  
-  // Delete confirmation state
-  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  const generateCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = 'NYA-';
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
+  const fetchInviteStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const res = await fetch(`${apiUrl}/invite/status`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.code) {
+          setInviteCode(data.code);
+          const ttl = data.ttl_seconds;
+          setTimeLeft(ttl);
+          setExpireAt(Date.now() + ttl * 1000);
+        } else {
+          generateCode();
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching invite status:', err);
     }
-    setInviteCode(code);
-    setTimeLeft(600);
-    setCopied(false);
   };
 
-  const openInviteModal = () => {
-    generateCode();
-    setIsInviteModalOpen(true);
+  const generateCode = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const res = await fetch(`${apiUrl}/invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setInviteCode(data.code);
+        const ttl = data.ttl_seconds || 600;
+        setTimeLeft(ttl);
+        setExpireAt(Date.now() + ttl * 1000);
+        setCopied(false);
+      }
+    } catch (err) {
+      console.error('Error generating invite code:', err);
+    }
   };
 
   useEffect(() => {
+    fetchInviteStatus();
+  }, []);
+
+  useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (isInviteModalOpen && timeLeft > 0) {
-      timer = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (isInviteModalOpen && timeLeft === 0) {
-      generateCode();
+    if (expireAt !== null) {
+      const remaining = Math.max(0, Math.floor((expireAt - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      
+      if (remaining === 0) {
+        setExpireAt(null);
+        generateCode();
+      } else {
+        timer = setInterval(() => {
+          const currentRemaining = Math.max(0, Math.floor((expireAt - Date.now()) / 1000));
+          setTimeLeft(currentRemaining);
+          if (currentRemaining === 0) {
+            clearInterval(timer);
+            setExpireAt(null);
+            generateCode();
+          }
+        }, 1000);
+      }
     }
     return () => clearInterval(timer);
-  }, [isInviteModalOpen, timeLeft]);
+  }, [expireAt]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteCode);
@@ -70,41 +118,65 @@ export default function AdminUsersTab({ usersList, handleRoleChange, handleDelet
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
-  
-  const confirmDelete = () => {
-    if (userToDelete) {
-      handleDeleteUser(userToDelete);
-      setUserToDelete(null);
-    }
-  };
+
+  const radius = 16;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (timeLeft / 600) * circumference;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="bg-white flex flex-col h-full overflow-hidden">
-      <div className="p-6 md:p-8 border-b border-[#e5e2d6] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h3 className="text-xl font-extrabold text-[#04211a]">Organization Users</h3>
-        <button 
-          onClick={openInviteModal}
-          className="flex items-center gap-2 bg-[#04211a] text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-emerald-950 transition-all shadow-md active:scale-95 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> Add User
-        </button>
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm flex flex-col h-full overflow-hidden">
+      <div className="p-6 border-b border-[#e5e2d6] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h3 className="text-lg font-extrabold text-[#04211a]">Organization Users</h3>
+        
+        {/* Authenticator Style Invite Code */}
+        <div className="flex items-center gap-4 bg-white border border-[#e5e2d6] rounded-full pl-2 pr-4 py-1.5 shadow-sm">
+          {/* Circular Timer */}
+          <div className="relative w-10 h-10 flex items-center justify-center">
+            <svg className="transform -rotate-90 w-10 h-10">
+              <circle cx="20" cy="20" r={radius} stroke="#f1f5f9" strokeWidth="3" fill="none" />
+              <circle 
+                cx="20" 
+                cy="20" 
+                r={radius} 
+                stroke="#10b981" 
+                strokeWidth="3" 
+                fill="none" 
+                strokeDasharray={circumference} 
+                strokeDashoffset={strokeDashoffset} 
+                className="transition-all duration-1000 ease-linear" 
+              />
+            </svg>
+            <span className="absolute text-[10px] font-bold text-emerald-600">{formatTime(timeLeft)}</span>
+          </div>
+          
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Invite Code</span>
+            <span className="text-base font-mono font-black text-[#04211a] tracking-widest leading-none">{inviteCode || '------'}</span>
+          </div>
+
+          <div className="w-px h-6 bg-[#e5e2d6] mx-1"></div>
+
+          <button onClick={handleCopy} className="p-1.5 text-slate-400 hover:text-[#04211a] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer active:scale-95">
+            {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
       
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] text-xs font-bold text-slate-500 uppercase tracking-widest">
-              <th className="px-6 md:px-8 py-4 font-bold">User</th>
-              <th className="px-6 md:px-8 py-4 font-bold">Role</th>
-              <th className="px-6 md:px-8 py-4 font-bold">Status</th>
-              <th className="px-6 md:px-8 py-4 font-bold">Last Active</th>
-              <th className="px-6 md:px-8 py-4 text-right font-bold">Manage</th>
+              <th className="px-6 py-4 font-bold">User</th>
+              <th className="px-6 py-4 font-bold">Role</th>
+              <th className="px-6 py-4 font-bold">Status</th>
+              <th className="px-6 py-4 font-bold">Last Active</th>
+              <th className="px-6 py-4 text-right font-bold">Manage</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e5e2d6]">
             {usersList.map((user) => (
               <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 md:px-8 py-4">
+                <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 font-bold text-xs uppercase shrink-0">
                       {user.name.split(' ').map(n => n[0]).join('')}
@@ -115,7 +187,7 @@ export default function AdminUsersTab({ usersList, handleRoleChange, handleDelet
                     </div>
                   </div>
                 </td>
-                <td className="px-6 md:px-8 py-4">
+                <td className="px-6 py-4">
                   <select 
                     value={user.role} 
                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
@@ -125,18 +197,28 @@ export default function AdminUsersTab({ usersList, handleRoleChange, handleDelet
                     <option value="Admin">Admin</option>
                   </select>
                 </td>
-                <td className="px-6 md:px-8 py-4">
+                <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                     <span className="text-sm font-bold text-slate-600">{user.status}</span>
                   </div>
                 </td>
-                <td className="px-6 md:px-8 py-4 text-sm font-medium text-slate-500">{user.lastActive}</td>
-                <td className="px-6 md:px-8 py-4 text-right">
+                <td className="px-6 py-4 text-sm font-medium text-slate-500">{user.lastActive}</td>
+                <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
+                    {user.status === 'Pending' && (
+                      <button 
+                        onClick={() => handleApprove(user.id)}
+                        className="p-2 text-emerald-600 hover:text-emerald-700 transition-colors rounded-lg hover:bg-emerald-50 active:scale-95 cursor-pointer"
+                        title="Setujui Pengguna"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
+                    )}
                     <button 
-                      onClick={() => setUserToDelete(user.id)}
-                      className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50 cursor-pointer"
+                      onClick={() => setUserToDelete({ id: user.id, name: user.name })}
+                      className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50 cursor-pointer active:scale-95"
+                      title="Hapus Pengguna"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -148,102 +230,36 @@ export default function AdminUsersTab({ usersList, handleRoleChange, handleDelet
         </table>
       </div>
 
-      {/* Invite Modal */}
-      <AnimatePresence>
-        {isInviteModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              onClick={() => setIsInviteModalOpen(false)}
-              className="absolute inset-0 bg-[#04211a]/40 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative bg-white rounded-[2rem] border border-[#e5e2d6] shadow-2xl p-8 max-w-md w-full"
-            >
-              <button 
-                onClick={() => setIsInviteModalOpen(false)}
-                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-full hover:bg-slate-100 cursor-pointer"
+      {/* Delete User Confirmation Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 transition-all">
+          <div className="bg-[#021611] border border-emerald-500/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl shadow-black/50">
+            <p className="text-white text-sm mb-6 leading-relaxed">
+              Apakah Anda yakin ingin menghapus akun <strong>{userToDelete.name}</strong>? Akun tersebut akan terhapus permanen dari database dan tidak dapat digunakan lagi.
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setUserToDelete(null)}
+                className="px-5 py-2.5 text-sm font-bold text-emerald-500/50 hover:bg-white/5 hover:text-white rounded-xl transition-all cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                Batal
               </button>
               
-              <div className="flex flex-col items-center text-center mt-4">
-                <h3 className="text-2xl font-black text-[#04211a] mb-2">Invite New User</h3>
-                <p className="text-sm font-semibold text-slate-500 mb-8 max-w-[280px]">
-                  Bagikan kode unik ini kepada pengguna baru untuk bergabung.
-                </p>
-
-                <div className="w-full bg-[#fcfbf7] border-2 border-dashed border-[#e5e2d6] rounded-2xl p-6 relative group">
-                  <div className="text-3xl font-mono font-black text-[#04211a] tracking-[0.1em] md:tracking-[0.2em] break-all">{inviteCode}</div>
-                  
-                  <button 
-                    onClick={handleCopy}
-                    className="absolute top-1/2 right-4 -translate-y-1/2 p-2.5 bg-white border border-[#e5e2d6] rounded-xl text-slate-500 hover:text-[#04211a] hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm cursor-pointer active:scale-95"
-                  >
-                    {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <Copy className="w-5 h-5" />}
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 mt-6 px-4 py-2 bg-amber-50 rounded-full border border-amber-100">
-                  <Clock className="w-4 h-4 text-amber-600" />
-                  <span className="text-xs font-bold text-amber-700">
-                    Kode ini hangus dalam <span className="font-mono text-sm ml-1">{formatTime(timeLeft)}</span>
-                  </span>
-                </div>
-              </div>
-            </motion.div>
+              <button
+                onClick={() => {
+                  handleDelete(userToDelete.id);
+                  setUserToDelete(null);
+                }}
+                className="px-5 py-2.5 text-sm font-bold bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-xl border border-red-500/20 hover:border-transparent transition-all cursor-pointer"
+              >
+                Hapus
+              </button>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
-      
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {userToDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              onClick={() => setUserToDelete(null)}
-              className="absolute inset-0 bg-[#04211a]/40 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative bg-white rounded-[2rem] border border-[#e5e2d6] shadow-2xl p-8 max-w-sm w-full text-center"
-            >
-              <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-black text-[#04211a] mb-2">Delete User?</h3>
-              <p className="text-sm font-semibold text-slate-500 mb-6">
-                Are you sure you want to remove this user from the organization? This action cannot be undone.
-              </p>
-              
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setUserToDelete(null)}
-                  className="flex-1 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold rounded-xl transition-colors cursor-pointer border-none"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={confirmDelete}
-                  className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer border-none shadow-md shadow-red-600/20"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
+
     </motion.div>
   );
 }

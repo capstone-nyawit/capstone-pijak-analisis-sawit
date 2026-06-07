@@ -56,7 +56,7 @@ export default function HowItWorks() {
           </motion.div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {steps.map((s, i) => (
             <motion.div
               key={s.title}
