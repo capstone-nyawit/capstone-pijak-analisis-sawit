@@ -20,10 +20,10 @@ export default function Navbar() {
   }, []);
 
   const navLinks = [
-    { name: 'Home', href: '/#' },
     { name: 'Features', href: '/#features' },
     { name: 'How It Works', href: '/#how-it-works' },
     { name: 'About', href: '/#about' },
+    { name: 'Contact', href: '/#contact' },
   ];
 
   return (
@@ -32,7 +32,20 @@ export default function Navbar() {
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2">
+          <Link 
+            to="/" 
+            className="flex items-center gap-2"
+            onClick={(e) => {
+              if (window.location.pathname === '/') {
+                e.preventDefault();
+                if ((window as any).lenis) {
+                  (window as any).lenis.scrollTo(0, { duration: 2.0 });
+                } else {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }
+            }}
+          >
             <div className="w-10 h-10 bg-brand-900 rounded-xl flex items-center justify-center shadow-lg shadow-brand-900/10">
               <TreePalm className="text-brand-500 w-6 h-6" />
             </div>
@@ -50,8 +63,17 @@ export default function Navbar() {
                   scrolled ? 'text-slate-600 hover:text-brand-600' : 'text-white/80 hover:text-white'
                 }`}
                 onClick={(e) => {
-                  if (window.location.pathname !== '/') {
-                    navigate('/');
+                  const isHome = window.location.pathname === '/';
+                  const hash = link.href.split('#')[1];
+                  if (isHome && hash) {
+                    e.preventDefault();
+                    const target = document.getElementById(hash);
+                    if (target && (window as any).lenis) {
+                      (window as any).lenis.scrollTo(target, { duration: 1.5, offset: -100 });
+                      window.history.pushState(null, '', `#${hash}`);
+                    }
+                  } else if (window.location.pathname !== '/') {
+                    navigate(link.href);
                   }
                 }}
               >
@@ -94,10 +116,19 @@ export default function Navbar() {
                 key={link.name}
                 href={link.href}
                 className="text-brand-950 hover:text-brand-600 block px-4 py-3 rounded-xl bg-slate-50 text-lg font-black transition-colors"
-                onClick={() => {
+                onClick={(e) => {
                   setIsOpen(false);
-                  if (window.location.pathname !== '/') {
-                    navigate('/');
+                  const isHome = window.location.pathname === '/';
+                  const hash = link.href.split('#')[1];
+                  if (isHome && hash) {
+                    e.preventDefault();
+                    const target = document.getElementById(hash);
+                    if (target && (window as any).lenis) {
+                      (window as any).lenis.scrollTo(target, { duration: 1.5, offset: -100 });
+                      window.history.pushState(null, '', `#${hash}`);
+                    }
+                  } else if (window.location.pathname !== '/') {
+                    navigate(link.href);
                   }
                 }}
               >

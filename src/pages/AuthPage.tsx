@@ -547,6 +547,8 @@ export default function AuthPage() {
                       </>
                     )}
                   </button>
+
+
                 </motion.form>
               ) : submitState !== null ? (
                 <motion.div

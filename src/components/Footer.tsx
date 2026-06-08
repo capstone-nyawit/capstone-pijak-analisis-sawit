@@ -3,9 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Leaf, Twitter, Linkedin, Github } from 'lucide-react';
+import { Leaf, Github, Mail } from 'lucide-react';
+
+import React from 'react';
 
 export default function Footer() {
+  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const href = e.currentTarget.getAttribute('href');
+    if (!href || !href.startsWith('#')) return;
+    
+    const hash = href.substring(1);
+    const target = document.getElementById(hash);
+    if (target && (window as any).lenis) {
+      e.preventDefault();
+      (window as any).lenis.scrollTo(target, { duration: 2.0, offset: -100 });
+      window.history.pushState(null, '', `#${hash}`);
+    }
+  };
+
   return (
     <footer id="contact" className="relative pt-16 pb-8 overflow-hidden">
       {/* Soft gradient bottom fade */}
@@ -20,11 +35,14 @@ export default function Footer() {
               <span className="text-[#F8FAF6] font-extrabold text-xl tracking-tight">Nyawit<span className="text-[#4ade80]">AI</span></span>
             </div>
             <p className="text-white/60 text-sm leading-relaxed mb-6 font-light">
-              Leading the revolution in precision agriculture through advanced UAV computer vision and deep learning analytics.
+              AI-powered plantation intelligence platform for oil palm health monitoring, analytics, and VRA recommendation.
             </p>
             <div className="flex gap-4">
-              {[Twitter, Linkedin, Github].map((Icon, i) => (
-                <a key={i} href="#" className="text-white/40 hover:text-[#4ade80] transition-colors">
+              {[
+                { Icon: Github, href: "https://github.com/capstone-nyawit" },
+                { Icon: Mail, href: "mailto:contact@nyawit.ai" }
+              ].map(({ Icon, href }, i) => (
+                <a key={i} href={href} target={href !== "#" ? "_blank" : undefined} rel={href !== "#" ? "noopener noreferrer" : undefined} className="text-white/40 hover:text-[#4ade80] transition-colors">
                   <Icon className="w-5 h-5" strokeWidth={1.5} />
                 </a>
               ))}
@@ -32,19 +50,21 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-white/95 font-bold mb-6 text-xs uppercase tracking-[0.2em] text-[#4ade80]">Solutions</h4>
+            <h4 className="text-white/95 font-bold mb-6 text-xs uppercase tracking-[0.2em] text-[#4ade80]">Features</h4>
             <ul className="space-y-4 text-white/60 text-sm font-light">
-              <li><a href="#features" className="hover:text-[#4ade80] transition-colors">Health Monitoring</a></li>
-              <li><a href="#features" className="hover:text-[#4ade80] transition-colors">Object Detection</a></li>
-              <li><a href="#features" className="hover:text-[#4ade80] transition-colors">VRA Optimization</a></li>
+              <li><a href="#features" onClick={handleScroll} className="hover:text-[#4ade80] transition-colors">AI Object Detection</a></li>
+              <li><a href="#features" onClick={handleScroll} className="hover:text-[#4ade80] transition-colors">Tree Health Classification</a></li>
+              <li><a href="#features" onClick={handleScroll} className="hover:text-[#4ade80] transition-colors">VRA Recommendation</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-white/95 font-bold mb-6 text-xs uppercase tracking-[0.2em] text-[#4ade80]">Company</h4>
+            <h4 className="text-white/95 font-bold mb-6 text-xs uppercase tracking-[0.2em] text-[#4ade80]">Quick Links</h4>
             <ul className="space-y-4 text-white/60 text-sm font-light">
-              <li><a href="#about" className="hover:text-[#4ade80] transition-colors">About Us</a></li>
-              <li><a href="#how-it-works" className="hover:text-[#4ade80] transition-colors">How It Works</a></li>
+              <li><a href="#features" onClick={handleScroll} className="hover:text-[#4ade80] transition-colors">Features</a></li>
+              <li><a href="#how-it-works" onClick={handleScroll} className="hover:text-[#4ade80] transition-colors">How It Works</a></li>
+              <li><a href="#about" onClick={handleScroll} className="hover:text-[#4ade80] transition-colors">About</a></li>
+              <li><a href="#contact" onClick={handleScroll} className="hover:text-[#4ade80] transition-colors">Contact</a></li>
             </ul>
           </div>
 
@@ -52,7 +72,7 @@ export default function Footer() {
             <h4 className="text-white/95 font-bold mb-6 text-xs uppercase tracking-[0.2em] text-[#4ade80]">Contact</h4>
             <ul className="space-y-4 text-white/60 text-sm font-light">
               <li className="hover:text-white transition-colors">HQ: Jakarta, Indonesia</li>
-              <li className="hover:text-white transition-colors">Email: info@nyawit.ai</li>
+              <li className="hover:text-white transition-colors">Email: contact@nyawit.ai</li>
             </ul>
           </div>
         </div>

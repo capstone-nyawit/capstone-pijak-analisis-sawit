@@ -15,20 +15,32 @@ import { motion, useScroll, useSpring } from 'motion/react';
 import Lenis from 'lenis';
 
 function ScrollSetup() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   const lenisRef = useRef<Lenis | null>(null);
+  const isInitialRender = useRef(true);
 
   useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    
+    // Always scroll to top before page unloads (refresh/close)
+    const handleBeforeUnload = () => {
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
     // Initialize Lenis
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 2.0,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
       smoothWheel: true,
+      wheelMultiplier: 0.8,
     });
 
     lenisRef.current = lenis;
+    (window as any).lenis = lenis;
 
     let rafId: number;
     function raf(time: number) {
@@ -41,17 +53,43 @@ function ScrollSetup() {
     return () => {
       cancelAnimationFrame(rafId);
       lenis.destroy();
+      (window as any).lenis = null;
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 
   useEffect(() => {
-    // Reset scroll position on route change
-    if (lenisRef.current) {
-      lenisRef.current.scrollTo(0, { immediate: true });
-    } else {
-      window.scrollTo(0, 0);
-    }
-  }, [pathname]);
+    const handleScrollTarget = () => {
+      if (lenisRef.current) {
+        if (hash && window.location.hash) {
+          // Wait a short tick for layout rendering
+          setTimeout(() => {
+            const target = document.querySelector(hash) as HTMLElement | null;
+            if (target) {
+              lenisRef.current?.scrollTo(target, { duration: 1.5, offset: -100 });
+            }
+          }, 100);
+        } else {
+          window.scrollTo(0, 0);
+          lenisRef.current.scrollTo(0, { immediate: true });
+          setTimeout(() => {
+            lenisRef.current?.scrollTo(0, { immediate: true });
+          }, 50);
+        }
+      } else {
+        if (hash && window.location.hash) {
+          const target = document.querySelector(hash);
+          if (target) target.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          window.scrollTo(0, 0);
+          setTimeout(() => window.scrollTo(0, 0), 50);
+        }
+      }
+    };
+
+    handleScrollTarget();
+  }, [pathname, hash]);
+
 
   return null;
 }
