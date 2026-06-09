@@ -12,3 +12,7 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+
+# Vite Cache
+.vite/
+.vscode

@@ -440,7 +440,7 @@
 //   );
 // }
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CloudLightning, 
@@ -461,6 +461,7 @@ interface Log {
   id: string;
   date: string;
   block: string;
+  originalBlock?: string;
   trees: number;
   status: string;
   confidence: string;
@@ -485,6 +486,37 @@ export default function UserLogsTab({ logs, deleteLog, triggerDownload }: UserLo
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
   const [vraStatus, setVraStatus] = useState<'PENDING' | 'COMPLETED'>('PENDING');
   const [logToDelete, setLogToDelete] = useState<string | null>(null);
+  const [activeRecommendation, setActiveRecommendation] = useState<any>(null);
+  const [loadingRec, setLoadingRec] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!selectedLog) {
+      setActiveRecommendation(null);
+      return;
+    }
+    
+    const fetchRec = async () => {
+      setLoadingRec(true);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const headers = { 'Authorization': `Bearer ${token}` };
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
+        const res = await fetch(`${apiUrl}/vra/recommendation/log/${selectedLog.id}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setActiveRecommendation(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch VRA recommendation for log:", err);
+      } finally {
+        setLoadingRec(false);
+      }
+    };
+
+    fetchRec();
+  }, [selectedLog]);
 
   const toggleVraStatus = () => {
     setVraStatus(prev => prev === 'PENDING' ? 'COMPLETED' : 'PENDING');
@@ -718,14 +750,18 @@ export default function UserLogsTab({ logs, deleteLog, triggerDownload }: UserLo
                   </div>
                   <div className="p-6 flex flex-col lg:flex-row gap-8">
                     <div className="flex-1 bg-slate-100 rounded-xl min-h-[250px] flex flex-col items-center justify-center border-2 border-dashed border-slate-200 relative overflow-hidden group">
-                      {selectedLog.thumb ? (
-                        <img src={selectedLog.thumb} alt="Orthophoto View" className="absolute inset-0 w-full h-full object-cover" />
-                      ) : (
-                        <>
-                          <ImageIcon className="w-10 h-10 text-slate-300 mb-3 group-hover:scale-110 transition-transform" />
-                          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Orthophoto View</span>
-                        </>
-                      )}
+                      {(() => {
+                        const localImg = localStorage.getItem(`analysis_img_${(selectedLog.originalBlock || selectedLog.block).toLowerCase()}`);
+                        const displayThumb = localImg || selectedLog.thumb;
+                        return displayThumb ? (
+                          <img src={displayThumb} alt="Orthophoto View" className="absolute inset-0 w-full h-full object-cover" />
+                        ) : (
+                          <>
+                            <ImageIcon className="w-10 h-10 text-slate-300 mb-3 group-hover:scale-110 transition-transform" />
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Orthophoto View</span>
+                          </>
+                        );
+                      })()}
                       <div className="absolute top-[20%] left-[30%] w-16 h-16 border-[1.5px] border-emerald-500 rounded bg-emerald-500/10"></div>
                       <div className="absolute bottom-[30%] right-[25%] w-12 h-12 border-[1.5px] border-amber-500 rounded bg-amber-500/10"></div>
                       <div className="absolute top-[40%] left-[50%] w-20 h-20 border-[1.5px] border-red-500 rounded bg-red-500/10"></div>
@@ -738,44 +774,59 @@ export default function UserLogsTab({ logs, deleteLog, triggerDownload }: UserLo
                         <span className="text-4xl font-black text-[#04211a]">{selectedLog.trees.toLocaleString()}</span>
                       </div>
                       
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
-                            <span>Healthy Canopy</span>
-                            <span className="text-emerald-600">{Math.round(selectedLog.trees * 0.70).toLocaleString()} (70%)</span>
+                      {(() => {
+                        const hCount = activeRecommendation ? activeRecommendation.healthy_count : Math.round(selectedLog.trees * 0.84);
+                        const sCount = activeRecommendation ? activeRecommendation.small_canopy_count : Math.round(selectedLog.trees * 0.12);
+                        const yCount = activeRecommendation ? activeRecommendation.yellowing_count : Math.round(selectedLog.trees * 0.03);
+                        const dCount = activeRecommendation ? activeRecommendation.dead_count : (selectedLog.trees - hCount - sCount - yCount);
+                        const total = selectedLog.trees || 1;
+
+                        const pHealthy = ((hCount / total) * 100).toFixed(1);
+                        const pSmall = ((sCount / total) * 100).toFixed(1);
+                        const pYellow = ((yCount / total) * 100).toFixed(1);
+                        const pDead = ((dCount / total) * 100).toFixed(1);
+
+                        return (
+                          <div className="space-y-4">
+                            <div>
+                              <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
+                                <span>Healthy Canopy</span>
+                                <span className="text-emerald-600">{hCount.toLocaleString()} ({pHealthy}%)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2">
+                                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${pHealthy}%` }}></div>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
+                                <span>Small Canopy</span>
+                                <span className="text-teal-600">{sCount.toLocaleString()} ({pSmall}%)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2">
+                                <div className="bg-teal-500 h-2 rounded-full" style={{ width: `${pSmall}%` }}></div>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
+                                <span>Yellowing / Nutrient Deficient</span>
+                                <span className="text-amber-500">{yCount.toLocaleString()} ({pYellow}%)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2">
+                                <div className="bg-amber-400 h-2 rounded-full" style={{ width: `${pYellow}%` }}></div>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
+                                <span>Dead / Missing</span>
+                                <span className="text-red-500">{dCount.toLocaleString()} ({pDead}%)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2">
+                                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${pDead}%` }}></div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '70%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
-                            <span>Small Canopy</span>
-                            <span className="text-teal-600">{Math.round(selectedLog.trees * 0.12).toLocaleString()} (12%)</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-teal-500 h-2 rounded-full" style={{ width: '12%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
-                            <span>Yellowing / Nutrient Deficient</span>
-                            <span className="text-amber-500">{Math.round(selectedLog.trees * 0.14).toLocaleString()} (14%)</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-amber-400 h-2 rounded-full" style={{ width: '14%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
-                            <span>Dead / Missing</span>
-                            <span className="text-red-500">{Math.round(selectedLog.trees * 0.04).toLocaleString()} (4%)</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-red-500 h-2 rounded-full" style={{ width: '4%' }}></div>
-                          </div>
-                        </div>
-                      </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -792,27 +843,32 @@ export default function UserLogsTab({ logs, deleteLog, triggerDownload }: UserLo
                           <th className="px-6 py-4">Sector / Block</th>
                           <th className="px-6 py-4">Detected Issue</th>
                           <th className="px-6 py-4">Recommended Action</th>
-                          <th className="px-6 py-4 text-right">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        <tr className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 text-sm font-bold text-[#04211a]">{selectedLog.block}</td>
-                          <td className="px-6 py-4 text-sm font-semibold text-amber-600">Defisiensi Nitrogen (Kuning)</td>
-                          <td className="px-6 py-4 text-sm font-semibold text-slate-600">Aplikasi Urea 1.5kg/pohon (Zona Merah)</td>
-                          <td className="px-6 py-4 text-right">
-                            <button 
-                              onClick={toggleVraStatus}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95 ${
-                                vraStatus === 'PENDING' 
-                                  ? 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200' 
-                                  : 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200'
-                              }`}
-                            >
-                              {vraStatus}
-                            </button>
-                          </td>
-                        </tr>
+                        {loadingRec ? (
+                          <tr>
+                            <td colSpan={3} className="px-6 py-4 text-center text-xs font-bold text-slate-400">
+                              Loading VRA recommendations...
+                            </td>
+                          </tr>
+                        ) : activeRecommendation ? (
+                          <tr className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-bold text-[#04211a]">{selectedLog.block}</td>
+                            <td className="px-6 py-4 text-sm font-semibold text-amber-600">
+                              {activeRecommendation.primary_concern}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-semibold text-slate-600">
+                              {activeRecommendation.recommended_programs}
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-bold text-[#04211a]">{selectedLog.block}</td>
+                            <td className="px-6 py-4 text-sm font-semibold text-slate-600">Routine Monitoring</td>
+                            <td className="px-6 py-4 text-sm font-semibold text-slate-550">Routine NPK fertilization program</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>

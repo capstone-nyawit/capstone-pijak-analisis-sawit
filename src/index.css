@@ -50,3 +50,31 @@ input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
   display: none !important;
 }
+
+@media screen {
+  .printable-only {
+    display: none !important;
+  }
+}
+
+@media print {
+  #root, header, nav, footer, sidebar, button, .no-print {
+    display: none !important;
+  }
+  body, html {
+    background-color: white !important;
+    color: #1e293b !important;
+    font-size: 12px;
+  }
+  .printable-only {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    visibility: visible !important;
+  }
+  .printable-only * {
+    visibility: visible !important;
+  }
+}

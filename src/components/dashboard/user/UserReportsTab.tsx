@@ -1,15 +1,17 @@
 /**
  * User Reports Tab - Executive reports and record sheets
- * Terintegrasi penuh dengan sistem penghapusan log aktivitas.
+ * Features dynamic, high-fidelity browser printing to PDF using the rule engine recommendation details.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { 
   AlertTriangle, 
   Sprout, 
   Download, 
-  FileText 
+  FileText,
+  Loader2
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -17,6 +19,7 @@ import {
   Cell, 
   ResponsiveContainer 
 } from 'recharts';
+import ReportPDF from '@/components/reports/ReportPDF';
 
 // --- INTERFACES ---
 interface HighPriorityTree {
@@ -28,6 +31,7 @@ interface HighPriorityTree {
 interface Report {
   id: string;
   block: string;
+  originalName?: string;
   date: string;
   totalTrees: number;
   healthy: number;
@@ -44,7 +48,8 @@ interface UserReportsTabProps {
   selectedReportId: string;
   setSelectedReportId: (id: string) => void;
   triggerDownload: (block: string, format: string) => void;
-  onStartAnalysis?: () => void; // Opsional jika dibutuhkan tombol aksi tambahan
+  logs: any[];
+  onStartAnalysis?: () => void;
 }
 
 export default function UserReportsTab({
@@ -52,22 +57,82 @@ export default function UserReportsTab({
   selectedReportId,
   setSelectedReportId,
   triggerDownload,
+  logs
 }: UserReportsTabProps) {
   
+  const [printRec, setPrintRec] = useState<any>(null);
+  const [isLoadingPrint, setIsLoadingPrint] = useState(false);
+  const [activeReportRec, setActiveReportRec] = useState<any>(null);
+
   // --- KONDISI OTOMATIS JIKA DATA DIHAPUS ---
-  // Periksa apakah ID laporan yang dipilih saat ini masih ada di dalam array data
   const isSelectedReportValid = reports.some((r) => r.id === selectedReportId);
 
   useEffect(() => {
-    // Jika laporan aktif dihapus dari daftar tetapi array masih memiliki laporan lain,
-    // alihkan seleksi secara otomatis ke laporan indeks pertama yang tersedia.
     if (reports.length > 0 && !isSelectedReportValid) {
       setSelectedReportId(reports[0].id);
     }
   }, [reports, isSelectedReportValid, setSelectedReportId]);
 
-  // Menentukan data laporan yang aktif dirender ke layar
   const selectedReport = reports.find((r) => r.id === selectedReportId) || reports[0];
+
+  // Fetch recommendation for the currently selected preview report
+  useEffect(() => {
+    if (!selectedReport) return;
+    
+    const fetchActiveReportRec = async () => {
+      const matchingLog = logs.find((l: any) => l.block === selectedReport.block);
+      if (!matchingLog) return;
+      
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const headers = { 'Authorization': `Bearer ${token}` };
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
+        const res = await fetch(`${apiUrl}/vra/recommendation/log/${matchingLog.id}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setActiveReportRec(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch active report recommendation details:", err);
+      }
+    };
+
+    fetchActiveReportRec();
+  }, [selectedReport, logs]);
+
+  const handlePrintPDF = async (rep: Report) => {
+    const matchingLog = logs.find((l: any) => l.block === rep.block);
+    if (!matchingLog) {
+      alert("Data analisis untuk blok ini tidak ditemukan di riwayat log.");
+      return;
+    }
+    
+    setIsLoadingPrint(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
+      const res = await fetch(`${apiUrl}/vra/recommendation/log/${matchingLog.id}`, { headers });
+      if (res.ok) {
+        const recData = await res.json();
+        setPrintRec(recData);
+        // Wait for state to reflect in PrintableReportTemplate, then trigger print
+        setTimeout(() => {
+          window.print();
+        }, 150);
+      } else {
+        alert("Gagal memproses rekomendasi VRA untuk laporan.");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingPrint(false);
+    }
+  };
 
   return (
     <motion.div
@@ -78,11 +143,19 @@ export default function UserReportsTab({
       className="space-y-6"
     >
       {/* Title Header */}
-      <div>
-        <h2 className="text-2xl font-black text-[#04211a] tracking-tight">Reports & Records</h2>
-        <p className="text-sm text-slate-500 font-medium mt-1">
-          Kelola data bisnis operasional kebun, ringkasan zonasi kesehatan, dan ekspor laporan kerja.
-        </p>
+      <div className="flex justify-between items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-[#04211a] tracking-tight">Reports & Records</h2>
+          <p className="text-sm text-slate-500 font-medium mt-1">
+            Kelola data bisnis operasional kebun, ringkasan zonasi kesehatan, dan ekspor laporan kerja.
+          </p>
+        </div>
+        {isLoadingPrint && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-[#04211a] text-white rounded-full text-xs font-bold shadow-md">
+            <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+            <span>Mempersiapkan PDF...</span>
+          </div>
+        )}
       </div>
 
       {/* 1. KONDISI KOSONG (EMPTY STATE) */}
@@ -123,7 +196,7 @@ export default function UserReportsTab({
                   <div className="flex items-center gap-4 min-w-0">
                     {/* Thumbnail Satelit */}
                     <div className="w-14 h-14 rounded-2xl overflow-hidden border border-slate-200 shadow-inner shrink-0 relative">
-                      <img src={rep.thumb} className="w-full h-full object-cover" alt={rep.block} />
+                      <img src={localStorage.getItem(`analysis_img_${(rep.originalName || rep.block).toLowerCase()}`) || rep.thumb} className="w-full h-full object-cover" alt={rep.block} />
                       <div className="absolute inset-0 bg-[#04211a]/5" />
                     </div>
                     <div className="min-w-0">
@@ -135,15 +208,15 @@ export default function UserReportsTab({
                   {/* Tombol Aksi Ekspor */}
                   <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => triggerDownload(rep.block, 'PDF')}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer"
+                      onClick={() => handlePrintPDF(rep)}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer border-none"
                     >
                       <Download className="w-3 h-3 text-blue-200" />
                       PDF
                     </button>
                     <button
                       onClick={() => triggerDownload(rep.block, 'XLSX')}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer border-none"
                     >
                       <Download className="w-3 h-3 text-emerald-200" />
                       XLSX
@@ -161,141 +234,35 @@ export default function UserReportsTab({
             <div className="absolute top-0 left-0 right-0 h-2 bg-[#04211a]" />
             
             {/* Header Lembar Laporan */}
-            <div className="text-center pb-6 border-b border-slate-200">
-              <h3 className="text-xl font-extrabold text-[#04211a]">Plantation Status Report</h3>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1.5">
-                {selectedReport.block} • Snapshot
-              </p>
-            </div>
-
-            {/* Grid Ringkasan & Grafik Lingkaran */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center p-6 bg-[#fcfbf7] rounded-2xl border border-[#e5e2d6] relative">
-              <div className="md:col-span-7 grid grid-cols-2 gap-y-5 gap-x-4 md:border-r border-[#e5e2d6]/80 md:pr-4">
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Trees</span>
-                  <span className="text-lg font-black text-[#04211a]">{selectedReport.totalTrees.toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Healthy</span>
-                  <span className="text-lg font-black text-emerald-600">{selectedReport.healthy.toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Yellowing</span>
-                  <span className="text-lg font-black text-amber-600">{selectedReport.yellowing.toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Dead Trees</span>
-                  <span className="text-lg font-black text-red-600">{selectedReport.dead.toLocaleString()}</span>
-                </div>
-                <div className="col-span-2 pt-2.5 border-t border-[#e5e2d6]/50">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Analysis Date</span>
-                  <span className="text-xs font-bold text-slate-700">{selectedReport.analysisDate}</span>
-                </div>
-              </div>
-
-              {/* Grafik Lingkaran Mini */}
-              <div className="md:col-span-5 flex flex-col items-center justify-center">
-                <div className="w-24 h-24 relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Healthy', value: selectedReport.healthy },
-                          { name: 'Yellowing', value: selectedReport.yellowing },
-                          { name: 'Dead', value: selectedReport.dead }
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={20}
-                        outerRadius={36}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        <Cell fill="#10b981" />
-                        <Cell fill="#f59e0b" />
-                        <Cell fill="#ef4444" />
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest mt-1">
-                  Condition Ratio
-                </span>
-              </div>
-            </div>
-
-            {/* Tabel Lokasi Prioritas Tinggi */}
-            <div className="space-y-3.5">
-              <h4 className="text-xs font-black uppercase tracking-widest text-[#04211a] flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-red-600 text-opacity-80" />
-                High-Priority Locations
-              </h4>
-              <div className="overflow-hidden border border-[#e5e2d6] rounded-2xl shadow-inner bg-white">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] font-bold text-slate-400 uppercase text-[9px] tracking-widest">
-                      <th className="px-5 py-3 pl-5">Tree ID</th>
-                      <th className="px-5 py-3">Condition</th>
-                      <th className="px-5 py-3 pr-5">Coordinates</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedReport.highPriority.map((tree, idx) => (
-                      <tr key={idx} className="border-b border-[#e5e2d6]/50 last:border-0 hover:bg-slate-50/50 transition-colors">
-                        <td className="px-5 py-3 font-mono font-bold text-slate-700">{tree.id}</td>
-                        <td className="px-5 py-3">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                            tree.condition === 'Dead' 
-                              ? 'bg-red-50 text-red-700 border border-red-100' 
-                              : 'bg-amber-50 text-amber-700 border border-amber-100'
-                          }`}>
-                            {tree.condition}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3 font-mono text-slate-500">{tree.coords}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Rekomendasi & Marker Peta Satelit */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center pt-2">
-              <div className="p-4 bg-[#faf8f0] border border-[#e5e2d6] rounded-2xl space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#04211a] flex items-center gap-1.5">
-                  <Sprout className="w-3.5 h-3.5 text-emerald-700" />
-                  Rekomendasi Pemupukan
-                </span>
-                <p className="text-[10px] text-slate-600 font-semibold leading-relaxed">
-                  Dosis VRA Pelepah: Naikkan 15% Mg pada zona merah. Berikan pengairan teratur di area pinggiran {selectedReport.block} untuk mengembalikan vitalitas pelepah sawit.
+            <div className="flex justify-between items-center border-b border-slate-200 pb-6">
+              <div className="text-left">
+                <h3 className="text-xl font-extrabold text-[#04211a]">Plantation Status Report</h3>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1.5">
+                  {selectedReport.block} • Snapshot
                 </p>
               </div>
+              <button 
+                onClick={() => handlePrintPDF(selectedReport)}
+                className="flex items-center gap-1 px-4 py-2 bg-[#04211a] hover:bg-emerald-950 text-white rounded-xl text-xs font-bold transition-all border-none cursor-pointer"
+              >
+                <Download className="w-4 h-4 text-emerald-400" />
+                Cetak PDF Laporan
+              </button>
+            </div>
 
-              {/* Kontainer Snapshot Satelit */}
-              <div className="h-28 rounded-2xl overflow-hidden border border-[#e5e2d6] shadow-sm relative group">
-                <img 
-                  src={selectedReport.satelliteMap} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                  alt="Satellite Preview" 
-                />
-                <div className="absolute inset-0 bg-[#04211a]/20 group-hover:bg-[#04211a]/10 transition-colors" />
-                <div className="absolute top-2 left-2 bg-[#04211a]/95 text-white px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border border-white/10">
-                  Sector Map
-                </div>
-                
-                {/* Marker Target Peta */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                  <div className="w-3.5 h-3.5 bg-red-500 rounded-full border border-white shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse" />
-                  <span className="text-[8px] font-black text-white bg-black/85 px-1 py-0.5 rounded shadow mt-1">
-                    {selectedReport.block}
-                  </span>
-                </div>
-              </div>
+            {/* Actual Print Template Preview */}
+            <div className="mt-6 border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+              <ReportPDF report={selectedReport} recommendation={activeReportRec} />
             </div>
 
           </div>
         </div>
+      )}
+
+      {/* Hidden printable report sheet */}
+      {selectedReport && createPortal(
+        <ReportPDF report={selectedReport} recommendation={printRec} />,
+        document.body
       )}
     </motion.div>
   );

@@ -3,11 +3,11 @@
  * Handles UAV/drone image upload, drag-and-drop validation, and analysis execution.
  */
 
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   PlaySquare, Loader2, ImageIcon, CheckCircle2, 
-  Leaf, Upload, RefreshCcw, AlertTriangle 
+  Leaf, Upload, RefreshCcw, AlertTriangle, MapPin
 } from 'lucide-react';
 
 interface InferenceTabProps {
@@ -17,7 +17,7 @@ interface InferenceTabProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleDrop: (e: React.DragEvent) => void;
-  runInference: () => void;
+  runInference: (blockName: string) => void;
   setActiveTab: (tab: 'Overview' | 'Inference' | 'Tree Health' | 'VRA' | 'Logs' | 'Reports') => void;
 }
 
@@ -31,6 +31,9 @@ export default function InferenceTab({
   runInference,
   setActiveTab
 }: InferenceTabProps) {
+  const [showZoneModal, setShowZoneModal] = useState(false);
+  const [zoneName, setZoneName] = useState('');
+
   return (
     <motion.div
       key="inference-pane"
@@ -163,7 +166,7 @@ export default function InferenceTab({
             {/* Action CTA */}
             <div className="flex flex-col items-center pt-2 lg:col-span-2 lg:col-start-1">
               <button
-                onClick={runInference}
+                onClick={() => setShowZoneModal(true)}
                 disabled={!image}
                 className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md
                   ${image 
@@ -186,6 +189,58 @@ export default function InferenceTab({
           </div>
         </>
       )}
+
+      {/* Modal Input Block / Zone Name */}
+      <AnimatePresence>
+        {showZoneModal && (
+          <div className="fixed inset-0 z-[1000] bg-[#04211a]/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100"
+            >
+              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MapPin className="w-6 h-6 text-emerald-850" />
+              </div>
+              <h3 className="text-lg font-black text-center text-[#04211a] mb-2">Nama Blok / Zona</h3>
+              <p className="text-xs font-semibold text-slate-500 text-center mb-4">
+                Silakan masukkan nama identitas untuk blok perkebunan atau zona citra UAV yang diunggah.
+              </p>
+              
+              <input
+                type="text"
+                value={zoneName}
+                onChange={(e) => setZoneName(e.target.value)}
+                placeholder="Contoh: Block A - North, Sector S-02"
+                className="w-full px-4 py-3 bg-[#fcfbf7] border border-[#e5e2d6] rounded-xl text-xs font-bold text-[#04211a] placeholder:text-slate-400 focus:outline-none focus:border-emerald-600 mb-6"
+                autoFocus
+              />
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => { setShowZoneModal(false); setZoneName(''); }}
+                  className="flex-1 px-4 py-2.5 bg-slate-50 hover:bg-[#04211a] hover:text-white text-slate-600 text-xs font-bold rounded-xl transition-colors cursor-pointer border-none"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={() => {
+                    if (!zoneName.trim()) return;
+                    runInference(zoneName.trim());
+                    setShowZoneModal(false);
+                    setZoneName('');
+                  }}
+                  disabled={!zoneName.trim()}
+                  className="flex-1 px-4 py-2.5 bg-[#04211a] hover:bg-emerald-950 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer border-none shadow-md shadow-emerald-900/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Mulai Analisis
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

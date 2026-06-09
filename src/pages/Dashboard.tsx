@@ -165,6 +165,15 @@ export default function Dashboard() {
 
   // Layout Tab State
   const [activeTab, setActiveTab] = useState<'Overview' | 'Inference' | 'Tree Health' | 'VRA' | 'Logs' | 'Reports' | 'Settings'>('Overview');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [activeTab]);
 
   // Notification System States
   const [notifications, setNotifications] = useState<{ id: string; message: string; type: 'success' | 'info' | 'error' }[]>([]);
@@ -361,89 +370,175 @@ export default function Dashboard() {
     };
   }, []);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        const headers = { 'Authorization': `Bearer ${token}` };
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  const fetchData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-        const [statsRes, logsRes, reportsRes, notifRes] = await Promise.all([
-          fetch(`${apiUrl}/dashboard/stats`, { headers }),
-          fetch(`${apiUrl}/logs/`, { headers }),
-          fetch(`${apiUrl}/reports/`, { headers }),
-          fetch(`${apiUrl}/user-notifications/`, { headers })
-        ]);
+      const [statsRes, logsRes, reportsRes, notifRes] = await Promise.all([
+        fetch(`${apiUrl}/dashboard/stats`, { headers }),
+        fetch(`${apiUrl}/logs/`, { headers }),
+        fetch(`${apiUrl}/reports/`, { headers }),
+        fetch(`${apiUrl}/user-notifications/`, { headers })
+      ]);
 
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          setDashboardStats(statsData);
-          if (statsData.kpiStats && statsData.kpiStats.length > 0) {
-            const t = statsData.kpiStats.find((k: any) => k.label === 'Total Trees')?.val.replace(/,/g, '') || "0";
-            const h = statsData.kpiStats.find((k: any) => k.label === 'Healthy')?.val.replace(/,/g, '') || "0";
-            const s = statsData.kpiStats.find((k: any) => k.label === 'Small Canopy')?.val.replace(/,/g, '') || "0";
-            const y = statsData.kpiStats.find((k: any) => k.label === 'Yellowing')?.val.replace(/,/g, '') || "0";
-            const d = statsData.kpiStats.find((k: any) => k.label === 'Dead / Missing')?.val.replace(/,/g, '') || "0";
-            
-            setStats({
-              totalTrees: parseInt(t),
-              healthy: parseInt(h),
-              smallCanopy: parseInt(s),
-              yellowing: parseInt(y),
-              deadMissing: parseInt(d)
-            });
+      let logsList: any[] = [];
+      if (logsRes.ok) {
+        const logsData = await logsRes.json();
+        logsList = logsData;
+
+        // Sort chronologically (oldest first) to assign suffixes
+        const sortedLogs = [...logsData].sort((a: any, b: any) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+
+        // Detect duplicates
+        const logNameCounts: { [key: string]: number } = {};
+        sortedLogs.forEach((l: any) => {
+          const key = l.block_name.toLowerCase();
+          logNameCounts[key] = (logNameCounts[key] || 0) + 1;
+        });
+
+        const logNameIndices: { [key: string]: number } = {};
+        const mappedLogsRaw = sortedLogs.map((l: any) => {
+          const key = l.block_name.toLowerCase();
+          let suffix = '';
+          if (logNameCounts[key] > 1) {
+            const index = (logNameIndices[key] || 0) + 1;
+            logNameIndices[key] = index;
+            const letter = String.fromCharCode(64 + index); // 'A', 'B'...
+            suffix = ` ${letter}`;
           }
-        }
-        
-        if (logsRes.ok) {
-          const logsData = await logsRes.json();
-          const mappedLogs = logsData.map((l: any) => ({
+          return {
             id: l.log_code,
             date: new Date(l.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            block: l.block_name,
+            block: `${l.block_name}${suffix}`,
+            originalBlock: l.block_name,
             trees: l.trees_count,
             status: l.status,
             confidence: `${l.confidence_score}%`,
-            thumb: 'https://images.unsplash.com/photo-1627883907153-61b453e00cc2?auto=format&fit=crop&w=100&q=80'
-          }));
-          setLogs(mappedLogs);
-        }
+            thumb: 'https://images.unsplash.com/photo-1627883907153-61b453e00cc2?auto=format&fit=crop&w=100&q=80',
+            createdAt: l.created_at
+          };
+        });
 
-        if (reportsRes.ok) {
-          const reportsData = await reportsRes.json();
-          const mappedReports = reportsData.map((r: any) => ({
+        // Sort back to descending order (newest first)
+        mappedLogsRaw.sort((a: any, b: any) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        setLogs(mappedLogsRaw);
+      }
+
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setDashboardStats(statsData);
+        if (statsData.kpiStats && statsData.kpiStats.length > 0) {
+          const t = statsData.kpiStats.find((k: any) => k.label === 'Total Trees')?.val.replace(/,/g, '') || "0";
+          const h = statsData.kpiStats.find((k: any) => k.label === 'Healthy')?.val.replace(/,/g, '') || "0";
+          const s = statsData.kpiStats.find((k: any) => k.label === 'Small Canopy')?.val.replace(/,/g, '') || "0";
+          const y = statsData.kpiStats.find((k: any) => k.label === 'Yellowing')?.val.replace(/,/g, '') || "0";
+          const d = statsData.kpiStats.find((k: any) => k.label === 'Dead / Missing')?.val.replace(/,/g, '') || "0";
+          
+          setStats({
+            totalTrees: parseInt(t),
+            healthy: parseInt(h),
+            smallCanopy: parseInt(s),
+            yellowing: parseInt(y),
+            deadMissing: parseInt(d)
+          });
+        }
+      }
+
+      if (reportsRes.ok) {
+        const reportsData = await reportsRes.json();
+
+        // Sort chronologically (oldest first)
+        const sortedReports = [...reportsData].sort((a: any, b: any) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+
+        // Map reports and find the correct matching log using block_name + timestamp closeness
+        const mappedRawReports = sortedReports.map((r: any) => {
+          const matchingLog = logsList.find((l: any) => {
+            if (l.block_name.toLowerCase() !== r.name.toLowerCase()) return false;
+            const logTime = new Date(l.created_at).getTime();
+            const reportTime = new Date(r.created_at).getTime();
+            return Math.abs(logTime - reportTime) < 5000; // within 5 seconds
+          });
+          const total = matchingLog ? matchingLog.trees_count : 2450;
+          const h = matchingLog ? Math.floor(total * 0.84) : 2100;
+          const s = matchingLog ? Math.floor(total * 0.12) : 300;
+          const y = matchingLog ? Math.floor(total * 0.03) : 40;
+          const d = total - h - s - y;
+          return {
             id: r.report_code,
-            block: r.name,
+            originalName: r.name,
             date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            totalTrees: 0, 
-            healthy: 0,
-            yellowing: 0,
-            dead: 0,
+            totalTrees: total, 
+            healthy: h,
+            yellowing: y + s,
+            dead: d,
             analysisDate: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
             thumb: 'https://images.unsplash.com/photo-1590682121342-eb4c798725ee?auto=format&fit=crop&w=150&q=80',
             satelliteMap: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=400&q=80',
-            highPriority: []
-          }));
-          setReports(mappedReports);
-        }
+            highPriority: d > 0 ? [
+              { id: 'T-102', condition: 'Dead', coords: '(1.2345, 103.4567)' }
+            ] : [],
+            createdAt: r.created_at
+          };
+        });
 
-        if (notifRes.ok) {
-          const notifData = await notifRes.json();
-          const mappedNotif = notifData.map((n: any) => ({
-            id: n.id.toString(),
-            message: n.message,
-            time: new Date(n.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-            read: n.is_read,
-            type: n.type || 'info'
-          }));
-          setInboxNotifications(mappedNotif);
-        }
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
+        // Detect duplicates and assign suffixes
+        const reportNameCounts: { [key: string]: number } = {};
+        mappedRawReports.forEach((r: any) => {
+          const key = r.originalName.toLowerCase();
+          reportNameCounts[key] = (reportNameCounts[key] || 0) + 1;
+        });
+
+        const reportNameIndices: { [key: string]: number } = {};
+        const mappedReports = mappedRawReports.map((r: any) => {
+          const key = r.originalName.toLowerCase();
+          let suffix = '';
+          if (reportNameCounts[key] > 1) {
+            const index = (reportNameIndices[key] || 0) + 1;
+            reportNameIndices[key] = index;
+            const letter = String.fromCharCode(64 + index);
+            suffix = ` ${letter}`;
+          }
+          return {
+            ...r,
+            block: `${r.originalName}${suffix}`
+          };
+        });
+
+        // Sort back to descending order (newest first)
+        mappedReports.sort((a: any, b: any) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        setReports(mappedReports);
       }
-    };
-    
+
+      if (notifRes.ok) {
+        const notifData = await notifRes.json();
+        const mappedNotif = notifData.map((n: any) => ({
+          id: n.id.toString(),
+          message: n.message,
+          time: new Date(n.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          read: n.is_read,
+          type: n.type || 'info'
+        }));
+        setInboxNotifications(mappedNotif);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -455,8 +550,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const menu = [
-    { icon: LayoutDashboard, label: 'Dashboard / Overview', value: 'Overview' as const, active: activeTab === 'Overview' },
-    // { icon: PlaySquare, label: 'Proses Inferensi', value: 'Inference' as const, active: activeTab === 'Inference' },
+    { icon: LayoutDashboard, label: 'Overview', value: 'Overview' as const, active: activeTab === 'Overview' },
     { icon: Leaf, label: 'Tree Health', value: 'Tree Health' as const, active: activeTab === 'Tree Health' },
     { icon: Map, label: 'VRA Tools', value: 'VRA' as const, active: activeTab === 'VRA' },
     { icon: CloudLightning, label: 'Inference Log', value: 'Logs' as const, active: activeTab === 'Logs' },
@@ -497,7 +591,7 @@ export default function Dashboard() {
     setActiveTab('Inference');
   };
 
-  const runInference = () => {
+  const runInference = (blockName: string) => {
     if (!image) {
       setError("Silakan pilih atau unggah citra UAV terlebih dahulu.");
       return;
@@ -521,56 +615,50 @@ export default function Dashboard() {
         setAnalysisProgress(100);
         setAnalysisStep(3);
 
-        setTimeout(() => {
+        setTimeout(async () => {
           // Inference complete! Prepend to recent history logs
           const addedTrees = Math.floor(1200 + Math.random() * 2000);
           const addedYellow = Math.floor(15 + Math.random() * 25);
           const addedDead = Math.floor(1 + Math.random() * 4);
           const addedHealthy = addedTrees - addedYellow - addedDead;
+          const confidenceVal = parseFloat((92 + Math.random() * 7).toFixed(1));
 
-          const randomBlocks = ['Block A - North', 'Sector S-02', 'Sector N-14', 'Block C - East', 'Block B - South'];
-          const randomBlock = randomBlocks[Math.floor(Math.random() * randomBlocks.length)];
+          const token = localStorage.getItem('token');
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+          if (token) {
+            try {
+              const res = await fetch(`${apiUrl}/vra/analyze`, {
+                method: 'POST',
+                headers: { 
+                  'Authorization': `Bearer ${token}`, 
+                  'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({
+                  block_name: blockName,
+                  healthy_count: addedHealthy,
+                  yellowing_count: addedYellow,
+                  small_canopy_count: Math.floor(addedTrees * 0.12),
+                  dead_count: addedDead,
+                  confidence_score: confidenceVal
+                })
+              });
+              if (res.ok) {
+                await fetchData();
+              }
+            } catch (err) {
+              console.error("Failed to save VRA analysis to backend:", err);
+            }
+          }
 
-          const newLog = {
-            id: `ANL-${Math.floor(2400 + Math.random() * 200)}`,
-            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            block: randomBlock,
-            trees: addedTrees,
-            status: 'Completed',
-            confidence: `${(92 + Math.random() * 7).toFixed(1)}%`,
-            thumb: image
-          };
-
-          setLogs((prevLogs) => [newLog, ...prevLogs]);
-
-          // Dynamically generate a premium report record matching this analysis
-          const newReport = {
-            id: `REP-${newLog.id.split('-')[1]}`,
-            block: randomBlock,
-            date: newLog.date,
-            totalTrees: addedTrees,
-            healthy: addedHealthy,
-            yellowing: addedYellow,
-            dead: addedDead,
-            analysisDate: newLog.date,
-            thumb: image || 'https://images.unsplash.com/photo-1627883907153-61b453e00cc2?auto=format&fit=crop&w=150&q=80',
-            satelliteMap: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=80',
-            highPriority: [
-              { id: `T-${Math.floor(100 + Math.random() * 800)}`, condition: 'Dead', coords: `(1.23${Math.floor(Math.random() * 9)}, 103.45${Math.floor(Math.random() * 9)})` },
-              { id: `T-${Math.floor(100 + Math.random() * 800)}`, condition: 'Yellow', coords: `(1.23${Math.floor(Math.random() * 9)}, 103.45${Math.floor(Math.random() * 9)})` }
-            ]
-          };
-          setReports((prev) => [newReport, ...prev]);
-          setSelectedReportId(newReport.id);
-
-          // Dynamically increment the stats
-          setStats((prevStats) => ({
-            totalTrees: prevStats.totalTrees + addedTrees,
-            healthy: prevStats.healthy + addedHealthy,
-            smallCanopy: prevStats.smallCanopy + Math.floor(addedTrees * 0.12),
-            yellowing: prevStats.yellowing + addedYellow,
-            deadMissing: prevStats.deadMissing + addedDead
-          }));
+          // Save the image in localStorage mapped by the block name
+          try {
+            if (image) {
+              localStorage.setItem(`analysis_img_${blockName.toLowerCase()}`, image);
+              localStorage.setItem('last_uploaded_image', image);
+            }
+          } catch (e) {
+            console.error("Failed to save image to localStorage:", e);
+          }
 
           // Reset inference states
           setIsAnalyzing(false);
@@ -578,7 +666,7 @@ export default function Dashboard() {
 
           // Automatically navigate to overview
           setActiveTab('Overview');
-          showNotification(`Analisis UAV Drone untuk ${randomBlock} berhasil diselesaikan! Data statistik kebun telah diperbarui.`, 'success');
+          showNotification(`Analisis UAV Drone untuk ${blockName} berhasil diselesaikan! Data statistik kebun telah diperbarui.`, 'success');
         }, 800);
       } else {
         setAnalysisProgress(currentProgress);
@@ -603,6 +691,7 @@ export default function Dashboard() {
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
 
   return (
     <>
@@ -835,7 +924,7 @@ export default function Dashboard() {
         </header>
 
         {/* Dashboard Scrollable Content */}
-        <div data-lenis-prevent className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 scroll-smooth bg-[#fcfbf7]">
+        <div ref={scrollContainerRef} data-lenis-prevent className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 scroll-smooth bg-[#fcfbf7]">
           <AnimatePresence mode="wait">
             
             {/* OVERVIEW PANEL */}
@@ -843,6 +932,7 @@ export default function Dashboard() {
               <UserOverviewTab 
                 logs={logs}
                 stats={stats}
+                priorityZones={dashboardStats?.priorityZones || []}
                 setActiveTab={setActiveTab}
                 triggerNewAnalysis={triggerNewAnalysis}
               />
@@ -878,6 +968,7 @@ export default function Dashboard() {
                 selectedReportId={selectedReportId}
                 setSelectedReportId={setSelectedReportId}
                 triggerDownload={triggerDownload}
+                logs={logs}
                 onStartAnalysis={() => setActiveTab('Inference')}
               />
             )}
@@ -886,6 +977,7 @@ export default function Dashboard() {
             {activeTab === 'Tree Health' && (
               <TreeHealthTab
                 stats={stats}
+                reports={reports}
                 hasData={logs.length > 0}
                 onStartAnalysis={() => setActiveTab('Inference')}
               />
@@ -895,6 +987,7 @@ export default function Dashboard() {
             {activeTab === 'VRA' && (
               <VRAToolsTab
                 hasData={logs.length > 0}
+                logs={logs}
                 onStartAnalysis={() => setActiveTab('Inference')}
               />
             )}

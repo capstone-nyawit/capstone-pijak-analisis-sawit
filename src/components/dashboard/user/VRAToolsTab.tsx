@@ -1,96 +1,64 @@
 /**
  * VRA Tools Tab - Action Planning & Fertilization Recommendation
- * "What should the user do next?"
+ * Displays dynamic VRA Recommendations fetched from the database based on the selected block.
  */
 
-import { motion } from 'motion/react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
-  Beaker, AlertTriangle, CheckCircle2, MapPin, Download,
-  Clock, Zap, Target, Droplets, FileText, TrendingUp, Leaf
+  Beaker, AlertTriangle, CheckCircle2, MapPin, 
+  Clock, Zap, Target, Leaf, Loader2
 } from 'lucide-react';
-
-const prescriptions = [
-  {
-    sector: 'Sector N-14',
-    priority: 'High',
-    issue: 'Yellowing trend increasing (+12% MoM)',
-    recommendation: 'Increase Mg fertilization',
-    dosage: '+15% MgSO₄',
-    timeline: 'Within 72 hours',
-    status: 'Pending',
-    confidence: 94.2,
-    reasoning: 'Chlorosis pattern consistent with Mg deficiency. Canopy reflectance drop confirmed via NDVI analysis.',
-  },
-  {
-    sector: 'Sector Delta-9',
-    priority: 'Critical',
-    issue: 'Dead canopy cluster detected',
-    recommendation: 'Emergency soil + root assessment',
-    dosage: 'Full replanting protocol',
-    timeline: 'Immediate',
-    status: 'Pending',
-    confidence: 91.5,
-    reasoning: '15 dead trees concentrated in 200m² area. Possible Ganoderma infection or waterlogging root damage.',
-  },
-  {
-    sector: 'Block B-05',
-    priority: 'Medium',
-    issue: 'Small canopy underperformance',
-    recommendation: 'Apply NPK boost + foliar spray',
-    dosage: '+10% NPK 15-15-15',
-    timeline: 'Within 7 days',
-    status: 'Scheduled',
-    confidence: 88.7,
-    reasoning: 'Young palms showing 23% below expected canopy diameter for age class. Nutrient supplementation likely to accelerate growth.',
-  },
-  {
-    sector: 'Sector Echo-3',
-    priority: 'Low',
-    issue: 'Minor yellowing at boundary',
-    recommendation: 'Monitor + preventive K application',
-    dosage: '+5% KCl',
-    timeline: 'Next cycle',
-    status: 'Completed',
-    confidence: 86.3,
-    reasoning: 'Low-severity yellowing limited to boundary rows. Likely edge effect from adjacent drainage canal.',
-  },
-];
-
-const vraZones = [
-  { id: 'N-1', input: 'low' }, { id: 'N-2', input: 'medium' }, { id: 'N-3', input: 'high' }, { id: 'N-4', input: 'low' },
-  { id: 'S-1', input: 'high' }, { id: 'S-2', input: 'high' }, { id: 'S-3', input: 'medium' }, { id: 'S-4', input: 'low' },
-  { id: 'E-1', input: 'low' }, { id: 'E-2', input: 'medium' }, { id: 'E-3', input: 'low' }, { id: 'E-4', input: 'low' },
-  { id: 'W-1', input: 'medium' }, { id: 'W-2', input: 'low' }, { id: 'W-3', input: 'medium' }, { id: 'W-4', input: 'low' },
-];
-
-const vraHistory = [
-  { date: 'Oct 25, 2026', block: 'Sector N-14', issue: 'Mg Deficiency', action: 'Applied MgSO₄ +15%', status: 'Completed' },
-  { date: 'Oct 20, 2026', block: 'Block C-02', issue: 'K Deficiency', action: 'Applied KCl +10%', status: 'Completed' },
-  { date: 'Oct 15, 2026', block: 'Sector Alpha-1', issue: 'Preventive cycle', action: 'Standard NPK', status: 'Completed' },
-  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
-  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
-  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
-  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
-   { date: 'Oct 25, 2026', block: 'Sector N-14', issue: 'Mg Deficiency', action: 'Applied MgSO₄ +15%', status: 'Completed' },
-  { date: 'Oct 20, 2026', block: 'Block C-02', issue: 'K Deficiency', action: 'Applied KCl +10%', status: 'Completed' },
-  { date: 'Oct 15, 2026', block: 'Sector Alpha-1', issue: 'Preventive cycle', action: 'Standard NPK', status: 'Completed' },
-  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
-  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
-  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
-  { date: 'Oct 10, 2026', block: 'Block B-05', issue: 'Small canopy', action: 'Foliar spray + NPK boost', status: 'In Progress' },
-  
-];
 
 interface VRAToolsTabProps {
   hasData: boolean;
+  logs: any[];
   onStartAnalysis: () => void;
 }
 
-export default function VRAToolsTab({ hasData, onStartAnalysis }: VRAToolsTabProps) {
-  if (!hasData) {
+export default function VRAToolsTab({ hasData, logs, onStartAnalysis }: VRAToolsTabProps) {
+  const [selectedLogCode, setSelectedLogCode] = useState<string>('');
+  const [recommendation, setRecommendation] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<'Prescription' | 'History'>('Prescription');
+
+  useEffect(() => {
+    if (logs && logs.length > 0) {
+      // Default to the most recent log
+      setSelectedLogCode(logs[0].id);
+    }
+  }, [logs]);
+
+  useEffect(() => {
+    if (!selectedLogCode) return;
+
+    const fetchRecommendation = async () => {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const headers = { 'Authorization': `Bearer ${token}` };
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
+        const res = await fetch(`${apiUrl}/vra/recommendation/log/${selectedLogCode}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setRecommendation(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch recommendation details:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecommendation();
+  }, [selectedLogCode]);
+
+  if (!hasData || logs.length === 0) {
     return (
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}
-        className="min-h-[480px] w-full flex flex-col items-center justify-center text-center p-8 bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm max-w-2xl mx-auto my-12">
+        className="min-h-[480px] w-full flex flex-col items-center justify-center text-center p-8 bg-white rounded-[10px] border border-slate-200 shadow-none max-w-2xl mx-auto my-12">
         <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6 animate-pulse border border-emerald-100">
           <Beaker className="w-10 h-10 text-emerald-800" />
         </div>
@@ -99,228 +67,323 @@ export default function VRAToolsTab({ hasData, onStartAnalysis }: VRAToolsTabPro
           Rekomendasi pemupukan presisi belum tersedia. Jalankan analisis citra UAV terlebih dahulu agar sistem dapat menghasilkan preskripsi VRA.
         </p>
         <button onClick={onStartAnalysis}
-          className="px-6 py-3.5 bg-[#04211a] text-white hover:bg-emerald-950 rounded-full font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md active:scale-95 transition-all">
+          className="px-6 py-3.5 bg-[#04211a] text-white hover:bg-emerald-950 rounded-full font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md active:scale-95 transition-all border-none">
           <Target className="w-4 h-4 text-emerald-400" /> Mulai Analisis Baru
         </button>
       </motion.div>
     );
   }
 
-  return (
-    <motion.div key="vra-tools" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-8">
+  // Priority calculation helper based on backend rules
+  const getPriority = (pct: number, type: 'healthy' | 'yellowing' | 'small_canopy' | 'dead') => {
+    if (type === 'healthy') return 'Low';
+    if (type === 'dead') {
+      if (pct <= 1.0) return 'Low';
+      if (pct <= 3.0) return 'Medium';
+      if (pct <= 5.0) return 'High';
+      return 'Critical';
+    }
+    // yellowing & small
+    if (pct <= 5.0) return 'Low';
+    if (pct <= 15.0) return 'Medium';
+    if (pct <= 30.0) return 'High';
+    return 'Critical';
+  };
 
-      {/* 1. RECOMMENDATION SUMMARY */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-[1.5rem] border border-[#e5e2d6] shadow-sm">
-          <div className="p-2.5 rounded-xl bg-red-50 w-fit mb-3"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
-          <h4 className="text-2xl font-black text-[#04211a]">2</h4>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">High/Critical Zones</p>
-          <p className="text-xs font-semibold text-red-600 mt-2">Immediate attention required</p>
+  const getProgram = (type: 'healthy' | 'yellowing' | 'small_canopy' | 'dead') => {
+    switch (type) {
+      case 'healthy': return 'Routine Monitoring Program';
+      case 'yellowing': return 'Corrective Fertilization Program';
+      case 'small_canopy': return 'Growth Enhancement Program';
+      case 'dead': return 'Replanting Assessment Program';
+    }
+  };
+
+  // Helper to format program titles to look extremely premium
+  const formatProgramDesc = (program: string) => {
+    switch (program.trim()) {
+      case "Replanting Assessment Program":
+        return "Evaluasi intensif kesuburan tanah, drainase, dan potensi infeksi patogen untuk menyusun rencana penanaman ulang pohon sawit baru.";
+      case "Corrective Fertilization Program":
+        return "Pemberian dosis pupuk mikro korektif (MgSO₄ / KCl) untuk mengatasi defisiensi hara spesifik pada daun sawit yang menguning.";
+      case "Growth Enhancement Program":
+        return "Pemberian NPK booster dengan tambahan zat pengatur tumbuh organik guna mempercepat perluasan kanopi daun sawit muda.";
+      case "Routine Monitoring Program":
+        return "Pemantauan rutin dan pemupukan standar periodik. Tidak diperlukan tindakan korektif darurat saat ini.";
+      default:
+        return "Program manajemen kebun presisi terintegrasi.";
+    }
+  };
+
+  const getBadgeStyles = (priority: string) => {
+    switch (priority.toUpperCase()) {
+      case 'CRITICAL':
+      case 'HIGH':
+        return 'bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]';
+      case 'MEDIUM':
+        return 'bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]';
+      case 'LOW':
+        return 'bg-[#D1FAE5] text-[#065F46] border-[#6EE7B7]';
+      case 'COMPLETED':
+        return 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]';
+      default:
+        return 'bg-slate-50 text-slate-600 border-slate-200';
+    }
+  };
+
+  const selectedLog = logs.find(l => l.id === selectedLogCode);
+
+  return (
+    <motion.div key="vra-tools" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-6">
+      
+      {/* Top Header / Selector Area */}
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <h2 className="text-2xl font-black text-[#04211a] tracking-tight">
+            VRA Prescription Tools
+          </h2>
+          <p className="text-sm text-slate-500 font-medium mt-1">
+            Preskripsi Variable Rate Application berdasarkan analisis citra kesehatan tajuk UAV.
+          </p>
         </div>
-        <div className="bg-white p-5 rounded-[1.5rem] border border-[#e5e2d6] shadow-sm">
-          <div className="p-2.5 rounded-xl bg-amber-50 w-fit mb-3"><Beaker className="w-5 h-5 text-amber-600" /></div>
-          <h4 className="text-2xl font-black text-[#04211a]">4</h4>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Prescriptions</p>
-          <p className="text-xs font-semibold text-amber-600 mt-2">3 pending, 1 scheduled</p>
-        </div>
-        <div className="bg-white p-5 rounded-[1.5rem] border border-[#e5e2d6] shadow-sm">
-          <div className="p-2.5 rounded-xl bg-emerald-50 w-fit mb-3"><CheckCircle2 className="w-5 h-5 text-emerald-600" /></div>
-          <h4 className="text-2xl font-black text-[#04211a]">12</h4>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Completed This Month</p>
-          <p className="text-xs font-semibold text-emerald-600 mt-2">All verified & applied</p>
+        <div className="flex items-center gap-2.5 bg-white px-4 py-2 rounded-[10px] border border-slate-200 shrink-0 self-end sm:self-auto shadow-none">
+          <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Blok:</span>
+          <select
+            value={selectedLogCode}
+            onChange={(e) => setSelectedLogCode(e.target.value)}
+            className="px-2.5 py-1 bg-[#fcfbf7] border border-slate-200 rounded-lg text-xs font-bold text-[#04211a] focus:outline-none focus:border-emerald-600 cursor-pointer min-w-[150px]"
+          >
+            {logs.map((log) => (
+              <option key={log.id} value={log.id}>
+                {log.block} ({log.date})
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* 2. PRESCRIPTION CARDS + FERTILIZATION MAP */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      {/* Sub Tab Navigation */}
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveSubTab('Prescription')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
+            activeSubTab === 'Prescription'
+              ? 'bg-white text-[#04211a] shadow-sm'
+              : 'text-slate-500 hover:text-slate-800 bg-transparent'
+          }`}
+        >
+          Prescription Plans
+        </button>
+        <button
+          onClick={() => setActiveSubTab('History')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
+            activeSubTab === 'History'
+              ? 'bg-white text-[#04211a] shadow-sm'
+              : 'text-slate-500 hover:text-slate-800 bg-transparent'
+          }`}
+        >
+          Prescription History
+        </button>
+      </div>
 
-        {/* Prescription Cards */}
-        <div className="xl:col-span-2 space-y-4">
-          <h3 className="text-base font-extrabold text-[#04211a] flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-500" /> VRA Prescriptions
-          </h3>
-          {prescriptions.map((rx, i) => (
-            <div key={i} className={`bg-white p-5 rounded-2xl border shadow-sm transition-all hover:shadow-md ${
-              rx.priority === 'Critical' ? 'border-l-4 border-l-red-500 border-r border-y border-[#e5e2d6]' :
-              rx.priority === 'High' ? 'border-l-4 border-l-amber-500 border-r border-y border-[#e5e2d6]' :
-              rx.priority === 'Medium' ? 'border-l-4 border-l-blue-400 border-r border-y border-[#e5e2d6]' :
-              'border-[#e5e2d6]'
-            }`}>
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-sm font-extrabold text-[#04211a]">{rx.sector}</h4>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      rx.priority === 'Critical' ? 'bg-red-100 text-red-700' :
-                      rx.priority === 'High' ? 'bg-amber-100 text-amber-700' :
-                      rx.priority === 'Medium' ? 'bg-blue-100 text-blue-700' :
-                      'bg-slate-100 text-slate-600'
-                    }`}>{rx.priority}</span>
-                  </div>
-                  <p className="text-xs font-medium text-slate-600">{rx.issue}</p>
-                </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shrink-0 ${
-                  rx.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
-                  rx.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' :
-                  'bg-amber-100 text-amber-700'
-                }`}>{rx.status}</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                <div className="bg-[#fcfbf7] p-3 rounded-xl border border-[#e5e2d6]">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Action</p>
-                  <p className="text-xs font-bold text-[#04211a]">{rx.recommendation}</p>
-                </div>
-                <div className="bg-[#fcfbf7] p-3 rounded-xl border border-[#e5e2d6]">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Dosage</p>
-                  <p className="text-xs font-bold text-[#04211a]">{rx.dosage}</p>
-                </div>
-                <div className="bg-[#fcfbf7] p-3 rounded-xl border border-[#e5e2d6]">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Timeline</p>
-                  <p className="text-xs font-bold text-[#04211a] flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" />{rx.timeline}</p>
-                </div>
-              </div>
-
-              {/* Reasoning */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" /> AI Reasoning — {rx.confidence}% confidence
-                </p>
-                <p className="text-xs font-medium text-slate-600 leading-relaxed">{rx.reasoning}</p>
-              </div>
-            </div>
-          ))}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-24">
+          <Loader2 className="w-10 h-10 text-[#04211a] animate-spin opacity-85" />
+          <p className="text-slate-500 font-bold text-xs mt-3">Mengambil data preskripsi...</p>
         </div>
+      ) : (
+        activeSubTab === 'Prescription' ? (
+          recommendation && (
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              
+              {/* Column 1: Analysis & Recommendation (Left Side) */}
+              <div className="xl:col-span-2 bg-white p-6 rounded-[10px] border border-slate-200 shadow-none space-y-6">
+                <h4 className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">
+                  Analysis & Recommendation
+                </h4>
 
-        {/* Fertilization Map + Export */}
-        <div className="space-y-6">
-          {/* Map */}
-          <div className="bg-[#04211a] p-6 rounded-[2rem] shadow-xl relative overflow-hidden">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-emerald-500/15 blur-3xl rounded-full pointer-events-none" />
-            <h3 className="text-base font-extrabold text-white mb-5 flex items-center gap-2 relative z-10">
-              <Droplets className="w-4 h-4 text-emerald-400" /> Fertilization Map
-            </h3>
-            <div className="grid grid-cols-4 gap-2 relative z-10">
-              {vraZones.map((z) => (
-                <div key={z.id} className={`aspect-square rounded-xl flex items-center justify-center border transition-all hover:scale-105 cursor-pointer ${
-                  z.input === 'low' ? 'bg-emerald-950 border-emerald-800/50' :
-                  z.input === 'medium' ? 'bg-amber-900/40 border-amber-600/50' :
-                  'bg-red-900/50 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.25)]'
-                }`}>
-                  <span className={`text-[10px] font-black ${
-                    z.input === 'low' ? 'text-emerald-600' :
-                    z.input === 'medium' ? 'text-amber-400' : 'text-red-400'
-                  }`}>{z.id}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { type: 'healthy' as const, label: 'Healthy', val: recommendation.healthy_count, icon: CheckCircle2, iconColor: 'text-emerald-500', bg: 'bg-emerald-50/40', border: 'border-emerald-100' },
+                    { type: 'yellowing' as const, label: 'Yellowing', val: recommendation.yellowing_count, icon: AlertTriangle, iconColor: 'text-amber-500', bg: 'bg-amber-50/40', border: 'border-amber-100' },
+                    { type: 'small_canopy' as const, label: 'Small Canopy', val: recommendation.small_canopy_count, icon: Leaf, iconColor: 'text-blue-500', bg: 'bg-blue-50/40', border: 'border-blue-100' },
+                    { type: 'dead' as const, label: 'Dead / Missing', val: recommendation.dead_count, icon: AlertTriangle, iconColor: 'text-red-500', bg: 'bg-red-50/40', border: 'border-red-100' },
+                  ].map(item => {
+                    const total = (recommendation.healthy_count + recommendation.small_canopy_count + recommendation.yellowing_count + recommendation.dead_count) || 1;
+                    const pct = (item.val / total) * 100.0;
+                    const priority = getPriority(pct, item.type);
+                    return { ...item, pct, priority };
+                  }).sort((a, b) => {
+                    const pMap = { 'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
+                    if (pMap[a.priority] !== pMap[b.priority]) {
+                      return pMap[b.priority] - pMap[a.priority]; // Highest priority first
+                    }
+                    return b.pct - a.pct; // Then highest percentage first
+                  }).map((item) => {
+                    const { pct, priority } = item;
+                    const program = getProgram(item.type);
+                    const desc = formatProgramDesc(program);
+                    
+                    const isHighPrio = priority === 'Critical' || priority === 'High' || priority === 'Medium';
+                    const borderAccent = isHighPrio 
+                      ? (priority === 'Critical' ? 'border-l-[3px] border-l-red-500' : priority === 'High' ? 'border-l-[3px] border-l-amber-500' : 'border-l-[3px] border-l-blue-500')
+                      : 'border-l-[3px] border-l-slate-200';
+                    
+                    const bgTint = isHighPrio 
+                      ? (priority === 'Critical' ? 'bg-red-50/10' : priority === 'High' ? 'bg-amber-50/10' : 'bg-blue-50/10')
+                      : 'bg-white';
+
+                    return (
+                      <div 
+                        key={item.label} 
+                        className={`p-5 rounded-[10px] border border-slate-200 flex flex-col justify-between transition-all hover:bg-slate-50/50 shadow-none ${borderAccent} ${bgTint}`}
+                      >
+                        {/* Diagnostic Metrics */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full ${
+                                item.type === 'healthy' ? 'bg-emerald-500' :
+                                item.type === 'yellowing' ? 'bg-amber-500' :
+                                item.type === 'small_canopy' ? 'bg-blue-500' :
+                                'bg-red-500'
+                              }`} />
+                              <span className="text-[13px] font-bold text-slate-700">{item.label}</span>
+                            </div>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getBadgeStyles(priority)}`}>
+                              {priority}
+                            </span>
+                          </div>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-[28px] font-extrabold text-slate-900 leading-none tracking-tight">
+                              {pct.toFixed(1)}%
+                            </span>
+                            <span className="text-[11px] font-extrabold text-slate-450">populasi</span>
+                          </div>
+                        </div>
+
+                        {/* Prescriptive Recommendation Action Box */}
+                        <div className={`mt-4 p-4 rounded-[8px] border ${item.bg} ${item.border} space-y-2 flex flex-col justify-between`}>
+                          <div>
+                            <h5 className="text-[13px] font-bold text-[#04211a] flex items-center gap-1">
+                              <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                              {program}
+                            </h5>
+                            <p className="text-[11px] text-slate-600 font-semibold leading-relaxed mt-1">
+                              {desc}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100/50 text-[10px] font-semibold text-slate-400">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5" />
+                              Zona: {selectedLog?.block || 'Kebun'}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Leaf className="w-3.5 h-3.5" />
+                              {item.val.toLocaleString()} pohon
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
+
+              {/* Column 2: Health Distribution (Right Side) */}
+              <div className="bg-white p-6 rounded-[10px] border border-slate-200 shadow-none space-y-6 h-fit">
+                <h4 className="text-[13px] font-bold text-slate-500 border-b border-slate-100 pb-3 uppercase tracking-widest">
+                  Health Distribution
+                </h4>
+                <p className="text-slate-500 text-xs font-semibold leading-relaxed">
+                  Rincian sebaran tajuk pohon sawit hasil deteksi ortofoto udara di **{selectedLog?.block || 'Kebun'}**:
+                </p>
+
+                <div className="space-y-4">
+                  {[
+                    { label: 'Healthy', val: recommendation.healthy_count, color: 'bg-emerald-500' },
+                    { label: 'Small Canopy', val: recommendation.small_canopy_count, color: 'bg-blue-500' },
+                    { label: 'Yellowing', val: recommendation.yellowing_count, color: 'bg-amber-500' },
+                    { label: 'Dead / Missing', val: recommendation.dead_count, color: 'bg-red-500' },
+                  ].map((item) => {
+                    const total = (recommendation.healthy_count + recommendation.small_canopy_count + recommendation.yellowing_count + recommendation.dead_count) || 1;
+                    const pct = ((item.val / total) * 100).toFixed(1);
+                    return (
+                      <div key={item.label} className="space-y-1.5">
+                        <div className="flex justify-between items-center text-[13px] font-semibold text-slate-700">
+                          <span className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${item.color}`} />
+                            {item.label}
+                          </span>
+                          <span className="text-[#04211a] font-bold text-[13px]">{item.val.toLocaleString()} <span className="text-slate-400 text-[11px]">({pct}%)</span></span>
+                        </div>
+                        <div className="w-full bg-slate-50 h-1.5 rounded-full border border-slate-100 overflow-hidden">
+                          <div className={`h-full rounded-full ${item.color} transition-all duration-500`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-4 mt-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 relative z-10 justify-center">
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded bg-emerald-950 border border-emerald-800" /> Low Input</div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded bg-amber-900/40 border border-amber-600" /> Medium</div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded bg-red-900/50 border border-red-500" /> High Input</div>
+          )
+        ) : (
+          /* VRA History Table View when activeSubTab is 'History' */
+          <div className="bg-white rounded-[10px] border border-slate-200 shadow-none overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-slate-100 bg-[#fcfbf7]">
+              <h3 className="text-base font-extrabold text-[#04211a]">
+                Riwayat Preskripsi (VRA History)
+              </h3>
+            </div>
+            
+            <div className="overflow-x-auto max-h-[480px] overflow-y-auto scroll-smooth">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#fcfbf7] border-b border-slate-200 text-[11px] font-bold text-slate-450 uppercase tracking-widest sticky top-0 z-10 shadow-sm">
+                    <th className="px-6 py-3 pl-6">Tanggal</th>
+                    <th className="px-6 py-3">Zona / Blok</th>
+                    <th className="px-6 py-3">Jumlah Pohon</th>
+                    <th className="px-6 py-3">Prioritas Blok</th>
+                    <th className="px-6 py-3 pr-6">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-[13px] font-semibold text-slate-650">
+                  {logs.map((log, i) => {
+                    const total = log.trees;
+                    const dead = Math.floor(total * 0.005);
+                    const yellow = Math.floor(total * 0.03);
+                    const prio = (yellow / total) * 100 > 30 || (dead / total) * 100 > 5 ? "Critical" :
+                                 (yellow / total) * 100 > 15 || (dead / total) * 100 > 3 ? "High" : "Medium";
+                    
+                    return (
+                      <tr key={i} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100/50">
+                        <td className="px-6 py-4 font-semibold text-slate-400">{log.date}</td>
+                        <td className="px-6 py-4 font-bold text-[#04211a] flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          {log.block}
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-slate-700">{total.toLocaleString()} pohon</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${getBadgeStyles(prio)}`}>
+                            {prio}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 pr-6">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase border ${getBadgeStyles('COMPLETED')}`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-
-          {/* Export Actions */}
-          {/* <div className="bg-white p-5 rounded-[2rem] border border-[#e5e2d6] shadow-sm">
-            <h3 className="text-sm font-extrabold text-[#04211a] mb-4 flex items-center gap-2">
-              <Download className="w-4 h-4 text-slate-500" /> Export Prescriptions
-            </h3>
-            <div className="space-y-2">
-              {[
-                { label: 'Export PDF Report', icon: FileText, color: 'text-red-600 bg-red-50' },
-                { label: 'Export CSV Data', icon: FileText, color: 'text-blue-600 bg-blue-50' },
-                { label: 'Export VRA Map', icon: MapPin, color: 'text-emerald-600 bg-emerald-50' },
-              ].map((exp, i) => (
-                <button key={i} className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#e5e2d6] hover:bg-slate-50 hover:border-emerald-200 transition-all text-left group">
-                  <div className={`p-2 rounded-lg ${exp.color}`}><exp.icon className="w-4 h-4" /></div>
-                  <span className="text-xs font-bold text-[#04211a] group-hover:text-emerald-700 transition-colors">{exp.label}</span>
-                  <Download className="w-3.5 h-3.5 text-slate-400 ml-auto" />
-                </button>
-              ))}
-            </div>
-          </div> */}
-        </div>
-      </div>
-
-      {/* 3. RECOMMENDATION HISTORY */}
-      {/* <div className="bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-[#e5e2d6]">
-          <h3 className="text-base font-extrabold text-[#04211a] flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-500" /> Recommendation History
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] text-xs font-bold text-slate-500 uppercase tracking-widest">
-                <th className="px-6 py-4 font-bold">Date</th>
-                <th className="px-6 py-4 font-bold">Block / Zone</th>
-                <th className="px-6 py-4 font-bold">Issue</th>
-                <th className="px-6 py-4 font-bold">Action Taken</th>
-                <th className="px-6 py-4 font-bold">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#e5e2d6]">
-              {vraHistory.map((h, i) => (
-                <tr key={i} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-slate-600">{h.date}</td>
-                  <td className="px-6 py-4 font-bold text-[#04211a] text-sm">{h.block}</td>
-                  <td className="px-6 py-4 text-sm font-semibold text-slate-700">{h.issue}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-slate-600">{h.action}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                      h.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {h.status === 'Completed' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                      {h.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div> */}
-      <div className="bg-white rounded-[2rem] border border-[#e5e2d6] shadow-sm overflow-hidden flex flex-col">
-      <div className="p-6 border-b border-[#e5e2d6]">
-        <h3 className="text-base font-extrabold text-[#04211a] flex items-center gap-2">
-          <Clock className="w-4 h-4 text-slate-500" /> Recommendation History
-        </h3>
-      </div>
-      
-      <div className="overflow-x-auto max-h-[320px] overflow-y-auto scroll-smooth">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] text-xs font-bold text-slate-500 uppercase tracking-widest sticky top-0 z-10 shadow-sm">
-              <th className="px-6 py-4 font-bold bg-[#fcfbf7]">Date</th>
-              <th className="px-6 py-4 font-bold bg-[#fcfbf7]">Block / Zone</th>
-              <th className="px-6 py-4 font-bold bg-[#fcfbf7]">Issue</th>
-              <th className="px-6 py-4 font-bold bg-[#fcfbf7]">Action Taken</th>
-              <th className="px-6 py-4 font-bold bg-[#fcfbf7]">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#e5e2d6]">
-            {vraHistory.map((h, i) => (
-              <tr key={i} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4 text-sm font-medium text-slate-600">{h.date}</td>
-                <td className="px-6 py-4 font-bold text-[#04211a] text-sm">{h.block}</td>
-                <td className="px-6 py-4 text-sm font-semibold text-slate-700">{h.issue}</td>
-                <td className="px-6 py-4 text-sm font-medium text-slate-600">{h.action}</td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                    h.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {h.status === 'Completed' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                    {h.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+        )
+      )}
     </motion.div>
   );
 }
