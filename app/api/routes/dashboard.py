@@ -24,9 +24,9 @@ def get_dashboard_stats(
             "kpiStats": []
         }
 
-    total_trees = db.query(func.sum(InferenceLog.trees_count)).filter(
+    total_trees = int(db.query(func.sum(InferenceLog.trees_count)).filter(
         InferenceLog.company_id == company_id
-    ).scalar() or 0
+    ).scalar() or 0)
     
     healthy = int(total_trees * 0.84)
     small = int(total_trees * 0.12)
@@ -50,6 +50,36 @@ def get_dashboard_stats(
         for log in logs
     ]
 
+    # Fetch VRA Recommendations for priority zones
+    from app.models.vra_recommendation import VraRecommendation
+    priority_zones = []
+    
+    if logs:
+        log_ids = [log.id for log in logs]
+        recs = db.query(VraRecommendation, InferenceLog).join(
+            InferenceLog, VraRecommendation.inference_log_id == InferenceLog.id
+        ).filter(VraRecommendation.inference_log_id.in_(log_ids)).all()
+        
+        # Sort by priority level (Critical > High > Medium > Low) and then by anomaly percentage
+        priority_map = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
+        
+        def sort_key(item):
+            rec, log = item
+            total = log.trees_count or 1
+            anomaly_pct = ((rec.dead_count + rec.yellowing_count + rec.small_canopy_count) / total) * 100
+            return (priority_map.get(rec.overall_priority, 1), anomaly_pct)
+            
+        sorted_recs = sorted(recs, key=sort_key, reverse=True)
+        top_recs = sorted_recs[:2] # Top 2 priority zones
+        
+        for rec, log in top_recs:
+            priority_zones.append({
+                "block": log.block_name,
+                "priority": rec.overall_priority,
+                "primary_concern": rec.primary_concern,
+                "log_id": log.log_code
+            })
+
     return {
         "classDistribution": [
             { "name": 'Healthy', "value": healthy, "color": '#10b981' },
@@ -57,11 +87,7 @@ def get_dashboard_stats(
             { "name": 'Yellow', "value": yellow, "color": '#f59e0b' },
             { "name": 'Dead', "value": dead, "color": '#ef4444' }
         ],
-        "riskHeatmap": [
-            { "id": 'N-01', "risk": 'low' }, { "id": 'N-02', "risk": 'low' }, { "id": 'N-03', "risk": 'medium' }, { "id": 'N-04', "risk": 'low' },
-            { "id": 'S-01', "risk": 'medium' }, { "id": 'S-02', "risk": 'critical' }, { "id": 'S-03', "risk": 'medium' }, { "id": 'S-04', "risk": 'low' },
-            { "id": 'E-01', "risk": 'low' }, { "id": 'E-02', "risk": 'medium' }, { "id": 'E-03', "risk": 'low' }, { "id": 'E-04', "risk": 'low' },
-        ],
+        "priorityZones": priority_zones,
         "recentHistory": recentHistory,
         "kpiStats": [
             { "label": 'Total Trees', "val": f"{total_trees:,}", "trend": '+1.2%', "trendUp": True, "color": 'text-[#04211a]', "border": 'border-slate-200' },

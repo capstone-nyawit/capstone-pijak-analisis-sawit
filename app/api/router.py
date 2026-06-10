@@ -8,6 +8,7 @@ from app.api.routes.notifications import router as notifications_router
 from app.api.routes.user_notifications import router as user_notifications_router
 from app.api.routes.logs import router as logs_router
 from app.api.routes.reports import router as reports_router
+from app.api.routes.vra import router as vra_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, tags=["system"])
@@ -18,3 +19,5 @@ api_router.include_router(notifications_router, prefix="/api/notifications", tag
 api_router.include_router(user_notifications_router, prefix="/api/user-notifications", tags=["user-notifications"])
 api_router.include_router(logs_router, prefix="/api/logs", tags=["logs"])
 api_router.include_router(reports_router, prefix="/api/reports", tags=["reports"])
+api_router.include_router(vra_router, prefix="/api/vra", tags=["vra"])
+

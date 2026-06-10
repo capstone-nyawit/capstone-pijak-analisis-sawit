@@ -10,5 +10,6 @@ redis_client = redis.Redis(
     password=settings.redis_password,
     decode_responses=True,
     socket_timeout=1,
-    socket_connect_timeout=1
+    socket_connect_timeout=1,
+    protocol=2
 )

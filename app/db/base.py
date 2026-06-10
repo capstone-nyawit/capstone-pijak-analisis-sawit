@@ -4,3 +4,5 @@ from app.models.company import Company  # noqa
 from app.models.notification import Notification  # noqa
 from app.models.inference_log import InferenceLog  # noqa
 from app.models.report import Report  # noqa
+from app.models.vra_recommendation import VraRecommendation  # noqa
+

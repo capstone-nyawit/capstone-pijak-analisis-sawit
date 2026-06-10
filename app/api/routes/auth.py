@@ -37,6 +37,19 @@ def get_current_user(token_payload: dict = Depends(get_current_user_token), db: 
     user = db.query(User).filter(User.id == token_payload["id"]).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User tidak ditemukan")
+        
+    # Auto-assign a personal company if user doesn't have one
+    if not user.company_id:
+        from app.models.company import Company
+        company_name = f"Personal - {user.full_name or user.username or 'User'}"
+        company = Company(name=company_name)
+        db.add(company)
+        db.commit()
+        db.refresh(company)
+        user.company_id = company.id
+        user.company_name = company_name
+        db.commit()
+        
     return user
 
 def require_admin(current_user: User = Depends(get_current_user)):
