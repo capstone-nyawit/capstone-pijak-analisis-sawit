@@ -14,4 +14,5 @@ class InferenceLog(Base):
     trees_count = Column(Integer, default=0)
     confidence_score = Column(Float, default=0.0)
     status = Column(String(50), default="Completed") # Completed, Flagged
+    image_url = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

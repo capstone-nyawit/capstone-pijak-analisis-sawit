@@ -19,6 +19,7 @@ from app.schemas.user import (
 from app.models.user import User
 from app.models.company import Company
 from app.models.notification import Notification
+from app.models.activity_log import ActivityLog
 from fastapi.responses import RedirectResponse
 from app.crud import crud_user
 from app.core.security import (
@@ -179,11 +180,46 @@ def login(user_in: UserLogin, background_tasks: BackgroundTasks, db: Session = D
             
     background_tasks.add_task(update_presence, user.id)
     
+    # Record LOGIN activity
+    db_log = ActivityLog(
+        company_id=user.company_id,
+        user_id=user.id,
+        user_name=user.full_name or user.username,
+        user_role=user.role,
+        action="LOGIN",
+        detail="User logged in successfully"
+    )
+    db.add(db_log)
+    db.commit()
+    
     return {
         "access_token": access_token, 
         "token_type": "bearer",
         "role": user.role
     }
+
+@router.post("/logout")
+def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Record LOGOUT activity
+    db_log = ActivityLog(
+        company_id=current_user.company_id,
+        user_id=current_user.id,
+        user_name=current_user.full_name or current_user.username,
+        user_role=current_user.role,
+        action="LOGOUT",
+        detail="User logged out successfully"
+    )
+    db.add(db_log)
+    db.commit()
+    
+    try:
+        from app.db.redis import redis_client
+        redis_client.delete(f"user_online:{current_user.id}")
+    except Exception:
+        pass
+        
+    return {"message": "Logout berhasil"}
+
 
 @router.get("/invite/status")
 def get_invite_status(current_user: User = Depends(get_current_user)):

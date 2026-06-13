@@ -9,12 +9,14 @@ from app.api.routes.user_notifications import router as user_notifications_route
 from app.api.routes.logs import router as logs_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.vra import router as vra_router
+from app.api.routes.report_xlsx import router as report_xlsx_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, tags=["system"])
 api_router.include_router(auth_router, prefix="/api", tags=["auth"])
 api_router.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 api_router.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+api_router.include_router(report_xlsx_router, prefix="/api/admin", tags=["admin-xlsx"])
 api_router.include_router(notifications_router, prefix="/api/notifications", tags=["notifications"])
 api_router.include_router(user_notifications_router, prefix="/api/user-notifications", tags=["user-notifications"])
 api_router.include_router(logs_router, prefix="/api/logs", tags=["logs"])

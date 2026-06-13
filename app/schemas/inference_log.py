@@ -10,6 +10,7 @@ class InferenceLogBase(BaseModel):
     trees_count: int
     confidence_score: float
     status: str
+    image_url: Optional[str] = None
 
 class InferenceLogResponse(InferenceLogBase):
     id: int

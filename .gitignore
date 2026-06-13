@@ -8,3 +8,11 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .ipynb_checkpoints/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Local test outputs
+test_api_out.txt
