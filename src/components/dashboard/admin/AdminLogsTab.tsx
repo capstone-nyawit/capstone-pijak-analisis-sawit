@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Filter, CheckCircle2, AlertTriangle, X, Image as ImageIcon, MapPin, XCircle } from 'lucide-react';
+import { Search, Filter, CheckCircle2, AlertTriangle, X, Image as ImageIcon, MapPin, XCircle, Trash2 } from 'lucide-react';
 
 interface UserDetail {
   name: string;
@@ -15,12 +15,16 @@ interface Log {
   block: string;
   trees: number;
   confidence: number;
-  status: string; // 'Completed' | 'Pending' | 'Failed' | 'Flagged'
+  status: string;
+  thumb?: string;
+  predictions?: any;
+  originalBlock?: string;
 }
 
 interface AdminLogsTabProps {
   logs: Log[];
   getUserDetails: (userName: string) => UserDetail;
+  deleteLog: (id: string) => void;
 }
 
 type FilterStatus = 'ALL' | 'COMPLETED' | 'PENDING' | 'FAILED';
@@ -28,7 +32,7 @@ type FilterStatus = 'ALL' | 'COMPLETED' | 'PENDING' | 'FAILED';
 // URL Gambar Dummy untuk Frontend Preview (Menggunakan Unsplash Lanskap Perkebunan/Hutan)
 const DUMMY_PREVIEW_IMAGE = "https://images.unsplash.com/photo-1516259762381-22954d7d3ad2?auto=format&fit=crop&q=80&w=600";
 
-export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps) {
+export default function AdminLogsTab({ logs, getUserDetails, deleteLog }: AdminLogsTabProps) {
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
   const [vraStatus, setVraStatus] = useState<'PENDING' | 'COMPLETED'>('PENDING');
   
@@ -147,7 +151,7 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                     <td className="px-6 md:px-8 py-4">
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 border border-[#e5e2d6] flex items-center justify-center relative shadow-sm">
                         <img 
-                          src={DUMMY_PREVIEW_IMAGE} 
+                          src={log.thumb || DUMMY_PREVIEW_IMAGE} 
                           alt="Orthophoto Thumbnail" 
                           className="w-full h-full object-cover transition-transform group-hover:scale-110"
                         />
@@ -182,22 +186,34 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                       </span>
                     </td>
                     <td className="px-6 md:px-8 py-4 text-right">
-                      {displayStatus.toUpperCase() === 'COMPLETED' ? (
-                        /* Tombol Modifikasi Mata menjadi Button Details */
-                        <button 
-                          onClick={() => { setSelectedLog(log); setVraStatus('PENDING'); }}
-                          className="p-2.5 text-white bg-[#04211a] hover:bg-emerald-950 rounded-xl transition-all shadow-sm font-bold text-xs px-4 cursor-pointer active:scale-95 flex items-center gap-1 inline-block"
+                      <div className="flex items-center justify-end gap-2">
+                        {displayStatus.toUpperCase() === 'COMPLETED' ? (
+                          <button 
+                            onClick={() => { setSelectedLog(log); setVraStatus('PENDING'); }}
+                            className="p-2.5 text-white bg-[#04211a] hover:bg-emerald-950 rounded-xl transition-all shadow-sm font-bold text-xs px-4 cursor-pointer active:scale-95 flex items-center gap-1 inline-block"
+                          >
+                            Details
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => { setSelectedLog(log); setVraStatus('PENDING'); }}
+                            className="px-2 py-1 bg-amber-950 text-amber-400 border border-amber-800 rounded text-[11px] font-semibold hover:bg-amber-900 transition-all cursor-pointer shadow-sm"
+                          >
+                            Resolve
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Hapus log inference ${log.id}?`)) {
+                              deleteLog(log.id);
+                            }
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all active:scale-95 cursor-pointer"
+                          title="Hapus Log"
                         >
-                          Details
+                          <Trash2 className="w-4 h-4" />
                         </button>
-                      ) : (
-                        <button 
-                          onClick={() => { setSelectedLog(log); setVraStatus('PENDING'); }}
-                          className="px-2 py-1 bg-amber-950 text-amber-400 border border-amber-800 rounded text-[11px] font-semibold hover:bg-amber-900 transition-all cursor-pointer shadow-sm"
-                        >
-                          Resolve
-                        </button>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -275,30 +291,55 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                   </div>
                 )}
 
-                <div className="bg-white rounded-2xl border border-[#e5e2d6] shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border border-[#e5e2d6] shadow-sm overflow-hidden mb-8">
                   <div className="p-6 border-b border-[#e5e2d6]">
                     <h4 className="text-sm font-extrabold text-[#04211a]">Detection Output</h4>
                   </div>
                   <div className="p-6 flex flex-col lg:flex-row gap-8">
-                    {/* Mengganti komponen kosong dengan Render Preview Gambar Nyata */}
-                    <div className="flex-1 bg-slate-100 rounded-xl min-h-[250px] flex flex-col items-center justify-center border border-slate-200 relative overflow-hidden group shadow-inner">
-                      <img 
-                        src={DUMMY_PREVIEW_IMAGE} 
-                        alt="Orthophoto High Resolution View" 
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                      {/* Lapisan overlay agar bounding box deteksi buatan Anda tetap terlihat kontras */}
-                      <div className="absolute inset-0 bg-black/10 transition-opacity group-hover:opacity-0" />
-                      
-                      {/* Bounding box simulasi di atas gambar */}
-                      <div className="absolute top-[20%] left-[30%] w-16 h-16 border-[1.5px] border-emerald-500 rounded bg-emerald-500/20 backdrop-blur-[0.5px]"></div>
-                      <div className="absolute bottom-[30%] right-[25%] w-12 h-12 border-[1.5px] border-amber-500 rounded bg-amber-500/20 backdrop-blur-[0.5px]"></div>
-                      <div className="absolute top-[40%] left-[50%] w-20 h-20 border-[1.5px] border-red-500 rounded bg-red-500/20 backdrop-blur-[0.5px]"></div>
-                      <div className="absolute bottom-[10%] left-[20%] w-14 h-14 border-[1.5px] border-teal-500 rounded bg-teal-500/20 backdrop-blur-[0.5px]"></div>
-                      
-                      <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[9px] font-bold px-2 py-0.5 rounded backdrop-blur-sm uppercase tracking-wider">
-                        Orthophoto Live View
-                      </span>
+                    <div className="flex-1 bg-slate-100 rounded-xl min-h-[250px] flex flex-col items-center justify-center border-2 border-dashed border-slate-200 relative overflow-hidden group">
+                      {(() => {
+                        const localImg = localStorage.getItem(`analysis_img_${(selectedLog.originalBlock || selectedLog.block).toLowerCase()}`);
+                        const displayThumb = localImg || selectedLog.thumb;
+                        return displayThumb ? (
+                          <img src={displayThumb} alt="Orthophoto View" className="absolute inset-0 w-full h-full object-cover" />
+                        ) : (
+                          <>
+                            <ImageIcon className="w-10 h-10 text-slate-300 mb-3 group-hover:scale-110 transition-transform" />
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Orthophoto View</span>
+                          </>
+                        );
+                      })()}
+                      {(() => {
+                        if (!selectedLog.predictions) return null;
+                        let preds: any[] = [];
+                        if (typeof selectedLog.predictions === 'string') {
+                          try { preds = JSON.parse(selectedLog.predictions); } catch(e) {}
+                        } else if (Array.isArray(selectedLog.predictions)) {
+                          preds = selectedLog.predictions;
+                        }
+                        return preds.map((pred: any, idx: number) => {
+                          const box = pred.box || pred.bbox;
+                          if (!box) return null;
+                          const [xc, yc, w, h] = box;
+                          const scale = 0.5;
+                          const tw = w * scale;
+                          const th = h * scale;
+                          const left = (xc - tw / 2) * 100;
+                          const top = (yc - th / 2) * 100;
+                          const width = tw * 100;
+                          const height = th * 100;
+                          const cid = pred.class_id || pred.class;
+                          let borderColor = 'border-emerald-400';
+                          let bgColor = 'bg-emerald-500/10';
+                          if (cid === 0) { borderColor = 'border-red-500'; bgColor = 'bg-red-500/15'; }
+                          else if (cid === 4) { borderColor = 'border-amber-400'; bgColor = 'bg-amber-400/15'; }
+                          else if (cid === 3) { borderColor = 'border-blue-400'; bgColor = 'bg-blue-500/10'; }
+                          return (
+                            <div key={idx} className={`absolute border ${borderColor} ${bgColor} rounded-sm`}
+                              style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%` }} />
+                          );
+                        });
+                      })()}
                     </div>
                     
                     <div className="flex-1 flex flex-col justify-center space-y-6">
@@ -307,44 +348,59 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                         <span className="text-4xl font-black text-[#04211a]">{selectedLog.trees.toLocaleString()}</span>
                       </div>
                       
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
-                            <span>Healthy Canopy</span>
-                            <span className="text-emerald-600">{Math.round(selectedLog.trees * 0.70).toLocaleString()} (70%)</span>
+                      {(() => {
+                        const hCount = Math.round(selectedLog.trees * 0.70);
+                        const sCount = Math.round(selectedLog.trees * 0.12);
+                        const yCount = Math.round(selectedLog.trees * 0.14);
+                        const dCount = Math.round(selectedLog.trees * 0.04);
+                        const total = selectedLog.trees || 1;
+
+                        const pHealthy = ((hCount / total) * 100).toFixed(1);
+                        const pSmall = ((sCount / total) * 100).toFixed(1);
+                        const pYellow = ((yCount / total) * 100).toFixed(1);
+                        const pDead = ((dCount / total) * 100).toFixed(1);
+
+                        return (
+                          <div className="space-y-4">
+                            <div>
+                              <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
+                                <span>Healthy Canopy</span>
+                                <span className="text-emerald-600">{hCount.toLocaleString()} ({pHealthy}%)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2">
+                                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${pHealthy}%` }}></div>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
+                                <span>Small Canopy</span>
+                                <span className="text-teal-600">{sCount.toLocaleString()} ({pSmall}%)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2">
+                                <div className="bg-teal-500 h-2 rounded-full" style={{ width: `${pSmall}%` }}></div>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
+                                <span>Yellowing / Nutrient Deficient</span>
+                                <span className="text-amber-500">{yCount.toLocaleString()} ({pYellow}%)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2">
+                                <div className="bg-amber-400 h-2 rounded-full" style={{ width: `${pYellow}%` }}></div>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
+                                <span>Dead / Missing</span>
+                                <span className="text-red-500">{dCount.toLocaleString()} ({pDead}%)</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2">
+                                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${pDead}%` }}></div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '70%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
-                            <span>Small Canopy</span>
-                            <span className="text-teal-600">{Math.round(selectedLog.trees * 0.12).toLocaleString()} (12%)</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-teal-500 h-2 rounded-full" style={{ width: '12%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
-                            <span>Yellowing / Nutrient Deficient</span>
-                            <span className="text-amber-500">{Math.round(selectedLog.trees * 0.14).toLocaleString()} (14%)</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-amber-400 h-2 rounded-full" style={{ width: '14%' }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs font-bold text-slate-600 mb-1.5">
-                            <span>Dead / Missing</span>
-                            <span className="text-red-500">{Math.round(selectedLog.trees * 0.04).toLocaleString()} (4%)</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-red-500 h-2 rounded-full" style={{ width: '4%' }}></div>
-                          </div>
-                        </div>
-                      </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -359,28 +415,15 @@ export default function AdminLogsTab({ logs, getUserDetails }: AdminLogsTabProps
                       <thead>
                         <tr className="bg-[#fcfbf7] border-b border-[#e5e2d6] text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                           <th className="px-6 py-4">Sector / Block</th>
-                          <th className="px-6 py-4">Detected Issue</th>
-                          <th className="px-6 py-4">Recommended Action</th>
-                          <th className="px-6 py-4 text-right">Status</th>
+                          <th className="px-6 py-4">Status</th>
+                          <th className="px-6 py-4">Action Summary</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         <tr className="hover:bg-slate-50 transition-colors">
                           <td className="px-6 py-4 text-sm font-bold text-[#04211a]">{selectedLog.block}</td>
-                          <td className="px-6 py-4 text-sm font-semibold text-amber-600">Defisiensi Nitrogen (Kuning)</td>
-                          <td className="px-6 py-4 text-sm font-semibold text-slate-600">Aplikasi Urea 1.5kg/pohon (Zona Merah)</td>
-                          <td className="px-6 py-4 text-right">
-                            <button 
-                              onClick={toggleVraStatus}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95 ${
-                                vraStatus === 'PENDING' 
-                                  ? 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200' 
-                                  : 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200'
-                              }`}
-                            >
-                              {vraStatus}
-                            </button>
-                          </td>
+                          <td className="px-6 py-4 text-sm font-semibold text-emerald-600">Generated</td>
+                          <td className="px-6 py-4 text-sm font-semibold text-slate-700">Detailed VRA prescriptions available in user report</td>
                         </tr>
                       </tbody>
                     </table>

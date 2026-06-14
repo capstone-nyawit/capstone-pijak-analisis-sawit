@@ -91,10 +91,10 @@ export default function AdminOverviewTab({ logs, users = [], getUserDetails, set
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[#e5e2d6] border-b border-[#e5e2d6]">
         {[
-          { label: 'Total Analyses', val: '1,248', trend: '+12 this week', icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Trees Analyzed', val: '142.5k', trend: '+4.2k this week', icon: Sprout, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Total Analyses', val: logs.length.toString(), trend: `Active records`, icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Trees Analyzed', val: stats?.totalTrees?.toLocaleString() || '0', trend: `Census detected`, icon: Sprout, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Active Users', val: users.filter(u => u.status === 'Active').length.toString(), trend: `${users.filter(u => u.status === 'Active').length} active`, icon: Users, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'High-Risk Alerts', val: '3', trend: 'Needs attention', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
+          { label: 'High-Risk Alerts', val: logs.filter(l => l.status === 'Flagged').length.toString(), trend: 'Needs attention', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
         ].map((stat, i) => (
           <div 
             key={i} 
@@ -105,7 +105,7 @@ export default function AdminOverviewTab({ logs, users = [], getUserDetails, set
                   <stat.icon className={`w-5 h-5 ${stat.color}`} />
                 </div>
              </div>
-             <h3 className="text-3xl font-black text-[#04211a] tracking-tight">{stats?.kpiStats?.find((k:any) => k.label === 'Total Trees')?.val || '0'}</h3>
+             <h3 className="text-3xl font-black text-[#04211a] tracking-tight">{stat.val}</h3>
              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{stat.label}</p>
              <div className="mt-4 text-xs font-semibold text-slate-400">{stat.trend}</div>
           </div>

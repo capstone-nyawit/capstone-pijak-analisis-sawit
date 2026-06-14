@@ -78,6 +78,52 @@ export default function AdminDashboard() {
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string>('');
+
+  const deleteReport = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const res = await fetch(`${apiUrl}/reports/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setReports(prev => prev.filter(r => r.id !== id));
+        showNotification('Laporan berhasil dihapus.', 'success');
+        if (selectedReportId === id) {
+          setSelectedReportId('');
+        }
+      }
+    } catch (err) {
+      console.error("Failed to delete report", err);
+    }
+  };
+
+  const deleteLog = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      
+      const res = await fetch(`${apiUrl}/logs/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        setLogs(prev => prev.filter(l => l.id !== id));
+        showNotification('Log inference berhasil dihapus.', 'success');
+      } else {
+        const text = await res.text();
+        showNotification(`Gagal menghapus log: ${text}`, 'error');
+      }
+    } catch (err) {
+      console.error("Failed to delete log", err);
+      showNotification('Terjadi kesalahan saat menghapus log.', 'error');
+    }
+  };
 
   const inboxRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -160,9 +206,84 @@ export default function AdminDashboard() {
     }
   };
 
-  const triggerDownload = (reportName: string) => {
-    showNotification(`Berkas ${reportName} berhasil diekspor dan diunduh ke sistem lokal Anda!`, 'success');
+  const deleteNotification = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setInboxNotifications(prev => prev.filter(n => n.id !== id));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/notifications/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
+
+  const clearAllNotifications = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInboxNotifications([]);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/notifications/all/clear`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const triggerDownload = async (blockName: string, format: string) => {
+    // Always download user-activity-xlsx from admin endpoint
+    if (format === 'xlsx') {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          showNotification('Sesi login tidak ditemukan. Silakan login ulang.', 'error');
+          return;
+        }
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+        showNotification('Mempersiapkan berkas Excel...', 'info');
+        
+        console.log('[Download] Fetching:', `${apiUrl}/admin/reports/user-activity-xlsx`);
+        const res = await fetch(`${apiUrl}/admin/reports/user-activity-xlsx`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        console.log('[Download] Response status:', res.status, res.statusText);
+        
+        if (res.ok) {
+          const blob = await res.blob();
+          console.log('[Download] Blob size:', blob.size, 'type:', blob.type);
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `User_Activity_Audit_Log_${new Date().toISOString().split('T')[0]}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+          showNotification('Berkas Excel berhasil diunduh!', 'success');
+        } else {
+          const errText = await res.text().catch(() => 'unknown error');
+          console.error('[Download] Failed:', res.status, errText);
+          showNotification(`Gagal mengunduh (${res.status}): ${res.statusText}`, 'error');
+        }
+      } catch (err) {
+        console.error('[Download] Network error:', err);
+        showNotification('Terjadi kesalahan jaringan saat mengunduh.', 'error');
+      }
+      return;
+    }
+
+    showNotification(`Berkas ${blockName} sedang diproses untuk diunduh.`, 'info');
+  };
+
 
   const [usersList, setUsersList] = useState(mockUsers.map(u => ({
     ...u,
@@ -212,23 +333,94 @@ export default function AdminDashboard() {
             role: l.user_role,
             date: new Date(l.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
             block: l.block_name,
-            trees: l.trees_count,
-            confidence: l.confidence_score,
-            status: l.status
+            trees: l.trees_count || 0,
+            confidence: l.confidence_score || 0,
+            status: l.status,
+            thumb: l.image_url,
+            predictions: l.results_json,
+            originalBlock: l.block_name
           }));
           setLogs(mappedLogs);
         }
 
         if (reportsRes.ok) {
           const reportsData = await reportsRes.json();
-          const mappedReports = reportsData.map((r: any) => ({
-            id: r.report_code,
-            name: r.name,
-            type: r.type,
-            date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            size: r.size || 'N/A'
-          }));
-          setReports(mappedReports);
+          const sortedReports = [...reportsData].sort((a: any, b: any) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          const mappedReports = sortedReports.map((r: any) => {
+            const total = r.healthy_count + r.small_count + r.yellow_count + r.dead_count;
+            const h = r.healthy_count;
+            const s = r.small_count;
+            const y = r.yellow_count;
+            const d = r.dead_count;
+            
+            let highPriority: any[] = [];
+            let preds: any[] = [];
+            if (typeof r.results_json === 'string') {
+              try { preds = JSON.parse(r.results_json); } catch(e) {}
+            } else if (Array.isArray(r.results_json)) {
+              preds = r.results_json;
+            }
+            
+            const priorityTrees = preds.filter((p: any) => p.class_id === 0 || p.class_id === 4 || p.class === 0 || p.class === 4);
+            highPriority = priorityTrees.slice(0, 10).map((p: any, index: number) => {
+              const cond = (p.class_id === 0 || p.class === 0) ? 'Dead' : 'Yellowing';
+              const box = p.box || p.bbox || [0.5, 0.5];
+              const xc = box[0];
+              const yc = box[1];
+              const lat = (0.5082 + (yc - 0.5) * 0.005).toFixed(5);
+              const lon = (101.4421 + (xc - 0.5) * 0.005).toFixed(5);
+              return {
+                id: `T-${100 + index}`,
+                condition: cond,
+                coords: `(${lat}, ${lon})`
+              };
+            });
+
+            return {
+              id: r.report_code,
+              name: r.name,
+              type: r.type,
+              date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              size: r.size || 'N/A',
+              url: r.report_url || '#',
+              
+              // Full properties needed by UI
+              block: r.name,
+              totalTrees: total || 100, 
+              healthy: h || 86,
+              yellowing: y || 14,
+              dead: d || 0,
+              analysisDate: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              thumb: r.image_url || 'https://images.unsplash.com/photo-1590682121342-eb4c798725ee?auto=format&fit=crop&w=150&q=80',
+              satelliteMap: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=400&q=80',
+              highPriority: highPriority,
+              predictions: preds,
+              createdAt: r.created_at,
+              inferenceLogId: r.inference_log_id,
+              logCode: r.log_code
+            };
+          });
+          
+          const activityLogReport = {
+            id: 'activity-log-xlsx',
+            block: 'User Activity & Audit Logs',
+            name: 'User Activity & Audit Logs',
+            type: 'XLSX',
+            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            size: 'N/A',
+            totalTrees: 0,
+            healthy: 0,
+            yellowing: 0,
+            dead: 0,
+            analysisDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            thumb: '',
+            satelliteMap: '',
+            highPriority: []
+          };
+          
+          setReports([activityLogReport, ...mappedReports]);
         }
 
         if (notifRes.ok) {
@@ -475,14 +667,24 @@ export default function AdminDashboard() {
                   {/* Header */}
                   <div className="px-4 py-3 border-b border-[#e5e2d6] flex justify-between items-center bg-[#fcfbf7]">
                     <span className="text-[10px] font-black text-[#04211a] uppercase tracking-wider">Notifikasi</span>
-                    {inboxNotifications.filter(n => !n.read).length > 0 && (
-                      <button 
-                        onClick={markAllAsRead}
-                        className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                      >
-                        Tandai semua dibaca
-                      </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {inboxNotifications.filter(n => !n.read).length > 0 && (
+                        <button 
+                          onClick={markAllAsRead}
+                          className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                        >
+                          Tandai semua dibaca
+                        </button>
+                      )}
+                      {inboxNotifications.length > 0 && (
+                        <button 
+                          onClick={clearAllNotifications}
+                          className="text-[10px] font-bold text-red-500 hover:underline cursor-pointer"
+                        >
+                          Hapus Semua
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* List */}
@@ -491,13 +693,20 @@ export default function AdminDashboard() {
                       <div 
                         key={notif.id}
                         onClick={() => markAsRead(notif.id)}
-                        className={`p-4 flex gap-3 cursor-pointer hover:bg-slate-50 transition-all ${!notif.read ? 'bg-[#f1faf5]' : 'bg-white'}`}
+                        className={`p-4 flex gap-3 cursor-pointer hover:bg-slate-50 transition-all group ${!notif.read ? 'bg-[#f1faf5]' : 'bg-white'}`}
                       >
                         <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!notif.read ? 'bg-emerald-500' : 'bg-transparent'}`} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-semibold text-slate-700 leading-relaxed break-words">{notif.message}</p>
+                          <p className="text-[10px] font-semibold text-slate-700 leading-relaxed break-words pr-6">{notif.message}</p>
                           <span className="text-[9px] font-bold text-slate-400 block mt-1">{notif.time}</span>
                         </div>
+                        <button
+                          onClick={(e) => deleteNotification(e, notif.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Hapus Notifikasi"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ))}
 
@@ -586,6 +795,7 @@ export default function AdminDashboard() {
                   <AdminLogsTab 
                     logs={logs} 
                     getUserDetails={getUserDetails} 
+                    deleteLog={deleteLog}
                   />
                 </div>
               )}
@@ -604,6 +814,10 @@ export default function AdminDashboard() {
                   <AdminReportsTab 
                     reports={reports} 
                     triggerDownload={triggerDownload}
+                    selectedReportId={selectedReportId}
+                    setSelectedReportId={setSelectedReportId}
+                    logs={logs}
+                    deleteReport={deleteReport}
                   />
                 </div>
               )}
@@ -639,7 +853,19 @@ export default function AdminDashboard() {
                   Cancel
                 </button>
                 <button 
-                  onClick={() => navigate('/auth')}
+                  onClick={() => {
+                    const token = localStorage.getItem('token');
+                    if (token) {
+                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/logout`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      }).catch(() => {});
+                    }
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('role');
+                    navigate('/auth');
+                  }}
                   className="flex-1 px-4 py-2.5 bg-red-700 hover:bg-[#04211a] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer border-none shadow-md shadow-red-600/20"
                 >
                   Sign Out

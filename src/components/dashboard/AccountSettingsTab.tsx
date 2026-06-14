@@ -409,7 +409,7 @@ export default function AccountSettingsTab({
         {/* ========================================================= */}
         {/* SECTION 3: ORGANIZATION INFO (Optional)                   */}
         {/* ========================================================= */}
-        {showCompany && (
+        {(showCompany && !company.toLowerCase().startsWith('personal')) && (
           <section>
             <h2 className="text-lg font-extrabold text-[#04211a] mb-4 flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 shadow-sm">

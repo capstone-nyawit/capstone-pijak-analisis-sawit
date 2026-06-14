@@ -298,11 +298,77 @@ export default function Dashboard() {
     }
   };
 
+  const deleteNotification = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setInboxNotifications(prev => prev.filter(n => n.id !== id));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/user-notifications/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const clearAllNotifications = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInboxNotifications([]);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/user-notifications/all/clear`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Interactive Live Data States
   const [logs, setLogs] = useState<typeof initialHistory>([]);
   
-  const deleteLog = (id: string) => {
-    setLogs(prev => prev.filter(l => l.id !== id));
+  const deleteLog = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/logs/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setLogs(prev => prev.filter(l => l.id !== id));
+      showNotification('Log analisis berhasil dihapus permanen.', 'success');
+    } catch (err) {
+      console.error(err);
+      showNotification('Gagal menghapus log analisis.', 'error');
+    }
+  };
+
+  const deleteReport = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const res = await fetch(`${apiUrl}/reports/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setReports(prev => prev.filter(r => r.id !== id));
+        showNotification('Laporan berhasil dihapus.', 'success');
+      } else {
+        throw new Error('Gagal menghapus laporan dari database');
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification('Gagal menghapus laporan.', 'error');
+    }
   };
 
   // Reports Workspace States
@@ -419,7 +485,8 @@ export default function Dashboard() {
             trees: l.trees_count,
             status: l.status,
             confidence: `${l.confidence_score}%`,
-            thumb: 'https://images.unsplash.com/photo-1627883907153-61b453e00cc2?auto=format&fit=crop&w=100&q=80',
+            thumb: l.image_url || 'https://images.unsplash.com/photo-1627883907153-61b453e00cc2?auto=format&fit=crop&w=100&q=80',
+            predictions: l.results_json,
             createdAt: l.created_at
           };
         });
@@ -460,34 +527,53 @@ export default function Dashboard() {
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
 
-        // Map reports and find the correct matching log using block_name + timestamp closeness
+        // Map reports and use database properties directly
         const mappedRawReports = sortedReports.map((r: any) => {
-          const matchingLog = logsList.find((l: any) => {
-            if (l.block_name.toLowerCase() !== r.name.toLowerCase()) return false;
-            const logTime = new Date(l.created_at).getTime();
-            const reportTime = new Date(r.created_at).getTime();
-            return Math.abs(logTime - reportTime) < 5000; // within 5 seconds
+          const total = r.healthy_count + r.small_count + r.yellow_count + r.dead_count;
+          const h = r.healthy_count;
+          const s = r.small_count;
+          const y = r.yellow_count;
+          const d = r.dead_count;
+          
+          let highPriority: any[] = [];
+          let preds: any[] = [];
+          if (typeof r.results_json === 'string') {
+            try { preds = JSON.parse(r.results_json); } catch(e) {}
+          } else if (Array.isArray(r.results_json)) {
+            preds = r.results_json;
+          }
+          
+          const priorityTrees = preds.filter((p: any) => p.class_id === 0 || p.class_id === 4 || p.class === 0 || p.class === 4);
+          highPriority = priorityTrees.slice(0, 10).map((p: any, index: number) => {
+            const cond = (p.class_id === 0 || p.class === 0) ? 'Dead' : 'Yellowing';
+            const box = p.box || p.bbox || [0.5, 0.5];
+            const xc = box[0];
+            const yc = box[1];
+            const lat = (0.5082 + (yc - 0.5) * 0.005).toFixed(5);
+            const lon = (101.4421 + (xc - 0.5) * 0.005).toFixed(5);
+            return {
+              id: `T-${100 + index}`,
+              condition: cond,
+              coords: `(${lat}, ${lon})`
+            };
           });
-          const total = matchingLog ? matchingLog.trees_count : 2450;
-          const h = matchingLog ? Math.floor(total * 0.84) : 2100;
-          const s = matchingLog ? Math.floor(total * 0.12) : 300;
-          const y = matchingLog ? Math.floor(total * 0.03) : 40;
-          const d = total - h - s - y;
+
           return {
             id: r.report_code,
             originalName: r.name,
             date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            totalTrees: total, 
-            healthy: h,
-            yellowing: y + s,
-            dead: d,
+            totalTrees: total || 100, 
+            healthy: h || 86,
+            yellowing: y || 14,
+            dead: d || 0,
             analysisDate: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            thumb: 'https://images.unsplash.com/photo-1590682121342-eb4c798725ee?auto=format&fit=crop&w=150&q=80',
+            thumb: r.image_url || 'https://images.unsplash.com/photo-1590682121342-eb4c798725ee?auto=format&fit=crop&w=150&q=80',
             satelliteMap: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=400&q=80',
-            highPriority: d > 0 ? [
-              { id: 'T-102', condition: 'Dead', coords: '(1.2345, 103.4567)' }
-            ] : [],
-            createdAt: r.created_at
+            highPriority: highPriority,
+            predictions: preds,
+            createdAt: r.created_at,
+            inferenceLogId: r.inference_log_id,
+            logCode: r.log_code
           };
         });
 
@@ -544,6 +630,7 @@ export default function Dashboard() {
 
   // Inference Form States
   const [image, setImage] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisStep, setAnalysisStep] = useState(0);
@@ -560,6 +647,7 @@ export default function Dashboard() {
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImage(reader.result as string);
@@ -573,6 +661,7 @@ export default function Dashboard() {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith('image/')) {
+      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImage(reader.result as string);
@@ -584,102 +673,82 @@ export default function Dashboard() {
 
   const triggerNewAnalysis = () => {
     setImage(null);
+    setImageFile(null);
     setAnalysisProgress(0);
     setAnalysisStep(0);
     setIsAnalyzing(false);
     setError(null);
     setActiveTab('Inference');
   };
-
-  const runInference = (blockName: string) => {
-    if (!image) {
+  const runInference = async (blockName: string) => {
+    if (!image || !imageFile) {
       setError("Silakan pilih atau unggah citra UAV terlebih dahulu.");
       return;
     }
     
     setIsAnalyzing(true);
-    setAnalysisProgress(0);
-    setAnalysisStep(0);
+    setAnalysisProgress(10);
+    setAnalysisStep(1);
     setError(null);
 
-    const duration = 4000; // 4 seconds of gorgeous simulation
-    const intervalTime = 40;
-    const increment = 100 / (duration / intervalTime);
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      formData.append('block_name', blockName || 'Block Alpha Sector');
+      
+      setAnalysisProgress(40);
+      setAnalysisStep(2);
 
-    let currentProgress = 0;
-    const timer = setInterval(() => {
-      currentProgress += increment;
+      const response = await fetch(`${apiUrl}/predict`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
 
-      if (currentProgress >= 100) {
-        clearInterval(timer);
-        setAnalysisProgress(100);
-        setAnalysisStep(3);
-
-        setTimeout(async () => {
-          // Inference complete! Prepend to recent history logs
-          const addedTrees = Math.floor(1200 + Math.random() * 2000);
-          const addedYellow = Math.floor(15 + Math.random() * 25);
-          const addedDead = Math.floor(1 + Math.random() * 4);
-          const addedHealthy = addedTrees - addedYellow - addedDead;
-          const confidenceVal = parseFloat((92 + Math.random() * 7).toFixed(1));
-
-          const token = localStorage.getItem('token');
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-          if (token) {
-            try {
-              const res = await fetch(`${apiUrl}/vra/analyze`, {
-                method: 'POST',
-                headers: { 
-                  'Authorization': `Bearer ${token}`, 
-                  'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify({
-                  block_name: blockName,
-                  healthy_count: addedHealthy,
-                  yellowing_count: addedYellow,
-                  small_canopy_count: Math.floor(addedTrees * 0.12),
-                  dead_count: addedDead,
-                  confidence_score: confidenceVal
-                })
-              });
-              if (res.ok) {
-                await fetchData();
-              }
-            } catch (err) {
-              console.error("Failed to save VRA analysis to backend:", err);
-            }
-          }
-
-          // Save the image in localStorage mapped by the block name
-          try {
-            if (image) {
-              localStorage.setItem(`analysis_img_${blockName.toLowerCase()}`, image);
-              localStorage.setItem('last_uploaded_image', image);
-            }
-          } catch (e) {
-            console.error("Failed to save image to localStorage:", e);
-          }
-
-          // Reset inference states
-          setIsAnalyzing(false);
-          setImage(null);
-
-          // Automatically navigate to overview
-          setActiveTab('Overview');
-          showNotification(`Analisis UAV Drone untuk ${blockName} berhasil diselesaikan! Data statistik kebun telah diperbarui.`, 'success');
-        }, 800);
-      } else {
-        setAnalysisProgress(currentProgress);
-        // Update steps dynamically
-        if (currentProgress > 75) {
-          setAnalysisStep(3);
-        } else if (currentProgress > 50) {
-          setAnalysisStep(2);
-        } else if (currentProgress > 25) {
-          setAnalysisStep(1);
-        }
+      if (!response.ok) {
+        throw new Error('Gagal menghubungi server untuk prediksi.');
       }
-    }, intervalTime);
+
+      setAnalysisProgress(80);
+      const data = await response.json();
+      
+      setAnalysisProgress(100);
+      setAnalysisStep(3);
+
+      setTimeout(async () => {
+        // Clear state & fetch updated stats, reports, logs from backend
+        await fetchData();
+
+        // Save the image in localStorage mapped by the block name
+        try {
+          if (image) {
+            localStorage.setItem(`analysis_img_${blockName.toLowerCase()}`, image);
+            localStorage.setItem('last_uploaded_image', image);
+          }
+        } catch (e) {
+          console.error("Failed to save image to localStorage:", e);
+        }
+
+        // Reset inference states
+        setIsAnalyzing(false);
+        setImage(null);
+        setImageFile(null);
+
+        // Automatically navigate to overview
+        setActiveTab('Overview');
+        showNotification(`Analisis UAV Drone untuk ${blockName} berhasil diselesaikan!`, 'success');
+      }, 500);
+
+    } catch (err: any) {
+      console.error(err);
+      setError("Analysis failed: " + err.message);
+      setIsAnalyzing(false);
+    }
   };
 
   const stepsList = [
@@ -825,17 +894,26 @@ export default function Dashboard() {
               
               {isInboxOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl border border-[#e5e2d6] shadow-[0_15px_30px_rgba(4,33,26,0.15)] z-50 overflow-hidden py-1">
-                  {/* Header */}
                   <div className="px-4 py-3 border-b border-[#e5e2d6] flex justify-between items-center bg-[#fcfbf7]">
                     <span className="text-[10px] font-black text-[#04211a] uppercase tracking-wider">Notifikasi</span>
-                    {inboxNotifications.filter(n => !n.read).length > 0 && (
-                      <button 
-                        onClick={markAllAsRead}
-                        className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                      >
-                        Tandai semua dibaca
-                      </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {inboxNotifications.filter(n => !n.read).length > 0 && (
+                        <button 
+                          onClick={markAllAsRead}
+                          className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                        >
+                          Tandai semua dibaca
+                        </button>
+                      )}
+                      {inboxNotifications.length > 0 && (
+                        <button 
+                          onClick={clearAllNotifications}
+                          className="text-[10px] font-bold text-red-500 hover:underline cursor-pointer"
+                        >
+                          Hapus Semua
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* List */}
@@ -844,13 +922,20 @@ export default function Dashboard() {
                       <div 
                         key={notif.id}
                         onClick={() => markAsRead(notif.id)}
-                        className={`p-4 flex gap-3 cursor-pointer hover:bg-slate-50 transition-all ${!notif.read ? 'bg-[#f1faf5]' : 'bg-white'}`}
+                        className={`p-4 flex gap-3 cursor-pointer hover:bg-slate-50 transition-all group ${!notif.read ? 'bg-[#f1faf5]' : 'bg-white'}`}
                       >
                         <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!notif.read ? 'bg-emerald-500' : 'bg-transparent'}`} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-semibold text-slate-700 leading-relaxed break-words">{notif.message}</p>
+                          <p className="text-[10px] font-semibold text-slate-700 leading-relaxed break-words pr-6">{notif.message}</p>
                           <span className="text-[9px] font-bold text-slate-400 block mt-1">{notif.time}</span>
                         </div>
+                        <button
+                          onClick={(e) => deleteNotification(e, notif.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Hapus Notifikasi"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ))}
 
@@ -970,6 +1055,7 @@ export default function Dashboard() {
                 triggerDownload={triggerDownload}
                 logs={logs}
                 onStartAnalysis={() => setActiveTab('Inference')}
+                deleteReport={deleteReport}
               />
             )}
 
@@ -1043,7 +1129,19 @@ export default function Dashboard() {
                   Cancel
                 </button>
                 <button 
-                  onClick={() => navigate('/auth')}
+                  onClick={() => {
+                    const token = localStorage.getItem('token');
+                    if (token) {
+                      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/logout`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      }).catch(() => {});
+                    }
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('role');
+                    navigate('/auth');
+                  }}
                   className="flex-1 px-4 py-2.5 bg-red-700 hover:bg-[#04211a] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer border-none shadow-md shadow-red-600/20"
                 >
                   Sign Out

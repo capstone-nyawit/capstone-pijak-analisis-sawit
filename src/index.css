@@ -53,7 +53,17 @@ input[type="password"]::-ms-clear {
 
 @media screen {
   .printable-only {
-    display: none !important;
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border-width: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 }
 
@@ -65,6 +75,8 @@ input[type="password"]::-ms-clear {
     background-color: white !important;
     color: #1e293b !important;
     font-size: 12px;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .printable-only {
     display: block !important;

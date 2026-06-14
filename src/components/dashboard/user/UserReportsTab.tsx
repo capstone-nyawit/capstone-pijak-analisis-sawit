@@ -1,5 +1,5 @@
 /**
- * User Reports Tab - Executive reports and record sheets
+ * User Reports Tab - Plantation Reports
  * Features dynamic, high-fidelity browser printing to PDF using the rule engine recommendation details.
  */
 
@@ -7,18 +7,11 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { 
-  AlertTriangle, 
-  Sprout, 
   Download, 
   FileText,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  ResponsiveContainer 
-} from 'recharts';
 import ReportPDF from '@/components/reports/ReportPDF';
 
 // --- INTERFACES ---
@@ -41,6 +34,9 @@ interface Report {
   thumb: string;
   satelliteMap: string;
   highPriority: HighPriorityTree[];
+  predictions?: any;
+  inferenceLogId?: number;
+  logCode?: string;
 }
 
 interface UserReportsTabProps {
@@ -50,6 +46,7 @@ interface UserReportsTabProps {
   triggerDownload: (block: string, format: string) => void;
   logs: any[];
   onStartAnalysis?: () => void;
+  deleteReport: (id: string) => void;
 }
 
 export default function UserReportsTab({
@@ -57,12 +54,43 @@ export default function UserReportsTab({
   selectedReportId,
   setSelectedReportId,
   triggerDownload,
-  logs
+  logs,
+  deleteReport
 }: UserReportsTabProps) {
   
   const [printRec, setPrintRec] = useState<any>(null);
   const [isLoadingPrint, setIsLoadingPrint] = useState(false);
   const [activeReportRec, setActiveReportRec] = useState<any>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  // Trigger print once isPrinting and printRec are ready and fully mounted in the DOM
+  useEffect(() => {
+    if (!isPrinting || !printRec) return;
+
+    const checkAndPrint = () => {
+      const imgEl = document.getElementById('print-report-image') as HTMLImageElement;
+      if (imgEl) {
+        const triggerBrowserPrint = () => {
+          setTimeout(() => {
+            window.print();
+            setIsPrinting(false);
+          }, 350); // small delay to let browser paint
+        };
+
+        if (imgEl.complete) {
+          triggerBrowserPrint();
+        } else {
+          imgEl.onload = triggerBrowserPrint;
+          imgEl.onerror = triggerBrowserPrint;
+        }
+      } else {
+        setTimeout(checkAndPrint, 50);
+      }
+    };
+
+    const timer = setTimeout(checkAndPrint, 150);
+    return () => clearTimeout(timer);
+  }, [isPrinting, printRec]);
 
   // --- KONDISI OTOMATIS JIKA DATA DIHAPUS ---
   const isSelectedReportValid = reports.some((r) => r.id === selectedReportId);
@@ -80,8 +108,8 @@ export default function UserReportsTab({
     if (!selectedReport) return;
     
     const fetchActiveReportRec = async () => {
-      const matchingLog = logs.find((l: any) => l.block === selectedReport.block);
-      if (!matchingLog) return;
+      const logIdentifier = selectedReport.logCode || logs.find((l: any) => l.block === selectedReport.block)?.id;
+      if (!logIdentifier) return;
       
       try {
         const token = localStorage.getItem('token');
@@ -89,7 +117,7 @@ export default function UserReportsTab({
         const headers = { 'Authorization': `Bearer ${token}` };
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-        const res = await fetch(`${apiUrl}/vra/recommendation/log/${matchingLog.id}`, { headers });
+        const res = await fetch(`${apiUrl}/vra/recommendation/log/${logIdentifier}`, { headers });
         if (res.ok) {
           const data = await res.json();
           setActiveReportRec(data);
@@ -103,8 +131,8 @@ export default function UserReportsTab({
   }, [selectedReport, logs]);
 
   const handlePrintPDF = async (rep: Report) => {
-    const matchingLog = logs.find((l: any) => l.block === rep.block);
-    if (!matchingLog) {
+    const logIdentifier = rep.logCode || logs.find((l: any) => l.block === rep.block)?.id;
+    if (!logIdentifier) {
       alert("Data analisis untuk blok ini tidak ditemukan di riwayat log.");
       return;
     }
@@ -116,20 +144,33 @@ export default function UserReportsTab({
       const headers = { 'Authorization': `Bearer ${token}` };
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-      const res = await fetch(`${apiUrl}/vra/recommendation/log/${matchingLog.id}`, { headers });
+      const res = await fetch(`${apiUrl}/vra/recommendation/log/${logIdentifier}`, { headers });
       if (res.ok) {
         const recData = await res.json();
-        setPrintRec(recData);
-        // Wait for state to reflect in PrintableReportTemplate, then trigger print
-        setTimeout(() => {
-          window.print();
-        }, 150);
+        
+        // Preload the high-resolution image to ensure it is cached before printing
+        const highResUrl = rep.thumb.replace('w=100', 'w=1200').replace('w=150', 'w=1200');
+        const img = new Image();
+        img.src = highResUrl;
+        
+        const triggerPrint = () => {
+          setPrintRec(recData);
+          setIsPrinting(true);
+          setIsLoadingPrint(false);
+        };
+        
+        if (img.complete) {
+          triggerPrint();
+        } else {
+          img.onload = triggerPrint;
+          img.onerror = triggerPrint;
+        }
       } else {
         alert("Gagal memproses rekomendasi VRA untuk laporan.");
+        setIsLoadingPrint(false);
       }
     } catch (err) {
       console.error(err);
-    } finally {
       setIsLoadingPrint(false);
     }
   };
@@ -145,10 +186,7 @@ export default function UserReportsTab({
       {/* Title Header */}
       <div className="flex justify-between items-center gap-4">
         <div>
-          <h2 className="text-2xl font-black text-[#04211a] tracking-tight">Reports & Records</h2>
-          <p className="text-sm text-slate-500 font-medium mt-1">
-            Kelola data bisnis operasional kebun, ringkasan zonasi kesehatan, dan ekspor laporan kerja.
-          </p>
+          <h2 className="text-2xl font-black text-[#04211a] tracking-tight">Plantation Reports</h2>
         </div>
         {isLoadingPrint && (
           <div className="flex items-center gap-2 px-4 py-2 bg-[#04211a] text-white rounded-full text-xs font-bold shadow-md">
@@ -196,7 +234,11 @@ export default function UserReportsTab({
                   <div className="flex items-center gap-4 min-w-0">
                     {/* Thumbnail Satelit */}
                     <div className="w-14 h-14 rounded-2xl overflow-hidden border border-slate-200 shadow-inner shrink-0 relative">
-                      <img src={localStorage.getItem(`analysis_img_${(rep.originalName || rep.block).toLowerCase()}`) || rep.thumb} className="w-full h-full object-cover" alt={rep.block} />
+                      <img 
+                        src={rep.thumb} 
+                        className="w-full h-full object-cover" 
+                        alt={rep.block} 
+                      />
                       <div className="absolute inset-0 bg-[#04211a]/5" />
                     </div>
                     <div className="min-w-0">
@@ -205,23 +247,6 @@ export default function UserReportsTab({
                     </div>
                   </div>
 
-                  {/* Tombol Aksi Ekspor */}
-                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => handlePrintPDF(rep)}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer border-none"
-                    >
-                      <Download className="w-3 h-3 text-blue-200" />
-                      PDF
-                    </button>
-                    <button
-                      onClick={() => triggerDownload(rep.block, 'XLSX')}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black shadow-sm transition-all active:scale-95 cursor-pointer border-none"
-                    >
-                      <Download className="w-3 h-3 text-emerald-200" />
-                      XLSX
-                    </button>
-                  </div>
                 </motion.div>
               );
             })}
@@ -238,7 +263,7 @@ export default function UserReportsTab({
               <div className="text-left">
                 <h3 className="text-xl font-extrabold text-[#04211a]">Plantation Status Report</h3>
                 <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1.5">
-                  {selectedReport.block} • Snapshot
+                  {selectedReport.block} &bull; Snapshot
                 </p>
               </div>
               <button 
@@ -252,7 +277,7 @@ export default function UserReportsTab({
 
             {/* Actual Print Template Preview */}
             <div className="mt-6 border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-              <ReportPDF report={selectedReport} recommendation={activeReportRec} />
+              <ReportPDF report={selectedReport} recommendation={activeReportRec} isPreview={true} />
             </div>
 
           </div>
@@ -260,8 +285,8 @@ export default function UserReportsTab({
       )}
 
       {/* Hidden printable report sheet */}
-      {selectedReport && createPortal(
-        <ReportPDF report={selectedReport} recommendation={printRec} />,
+      {isPrinting && selectedReport && createPortal(
+        <ReportPDF report={selectedReport} recommendation={printRec} isPrintPortal={true} />,
         document.body
       )}
     </motion.div>

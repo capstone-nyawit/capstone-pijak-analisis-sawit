@@ -223,7 +223,17 @@ export default function VRAToolsTab({ hasData, logs, onStartAnalysis }: VRATools
                   }).map((item) => {
                     const { pct, priority } = item;
                     const program = getProgram(item.type);
-                    const desc = formatProgramDesc(program);
+                    
+                    let llmRecs: any = null;
+                    if (recommendation?.recommended_programs) {
+                      try {
+                        llmRecs = JSON.parse(recommendation.recommended_programs);
+                      } catch(e) {}
+                    }
+                    
+                    const desc = (llmRecs && llmRecs[item.type]) 
+                      ? llmRecs[item.type] 
+                      : formatProgramDesc(program);
                     
                     const isHighPrio = priority === 'Critical' || priority === 'High' || priority === 'Medium';
                     const borderAccent = isHighPrio 
@@ -270,8 +280,8 @@ export default function VRAToolsTab({ hasData, logs, onStartAnalysis }: VRATools
                               <Zap className="w-3.5 h-3.5 text-emerald-600" />
                               {program}
                             </h5>
-                            <p className="text-[11px] text-slate-600 font-semibold leading-relaxed mt-1">
-                              {desc}
+                            <p className="text-[11px] text-slate-600 font-semibold leading-relaxed mt-1 whitespace-pre-line">
+                              {desc.length > 150 ? desc.substring(0, 150) + '...' : desc}
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100/50 text-[10px] font-semibold text-slate-400">

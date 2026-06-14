@@ -466,6 +466,7 @@ interface Log {
   status: string;
   confidence: string;
   thumb: string;
+  predictions?: any[];
 }
 
 interface UserLogsTabProps {
@@ -762,10 +763,37 @@ export default function UserLogsTab({ logs, deleteLog, triggerDownload }: UserLo
                           </>
                         );
                       })()}
-                      <div className="absolute top-[20%] left-[30%] w-16 h-16 border-[1.5px] border-emerald-500 rounded bg-emerald-500/10"></div>
-                      <div className="absolute bottom-[30%] right-[25%] w-12 h-12 border-[1.5px] border-amber-500 rounded bg-amber-500/10"></div>
-                      <div className="absolute top-[40%] left-[50%] w-20 h-20 border-[1.5px] border-red-500 rounded bg-red-500/10"></div>
-                      <div className="absolute bottom-[10%] left-[20%] w-14 h-14 border-[1.5px] border-teal-500 rounded bg-teal-500/10"></div>
+                      {(() => {
+                        if (!selectedLog.predictions) return null;
+                        let preds: any[] = [];
+                        if (typeof selectedLog.predictions === 'string') {
+                          try { preds = JSON.parse(selectedLog.predictions); } catch(e) {}
+                        } else if (Array.isArray(selectedLog.predictions)) {
+                          preds = selectedLog.predictions;
+                        }
+                        return preds.map((pred: any, idx: number) => {
+                          const box = pred.box || pred.bbox;
+                          if (!box) return null;
+                          const [xc, yc, w, h] = box;
+                          const scale = 0.5;
+                          const tw = w * scale;
+                          const th = h * scale;
+                          const left = (xc - tw / 2) * 100;
+                          const top = (yc - th / 2) * 100;
+                          const width = tw * 100;
+                          const height = th * 100;
+                          const cid = pred.class_id || pred.class;
+                          let borderColor = 'border-emerald-400';
+                          let bgColor = 'bg-emerald-500/10';
+                          if (cid === 0) { borderColor = 'border-red-500'; bgColor = 'bg-red-500/15'; }
+                          else if (cid === 4) { borderColor = 'border-amber-400'; bgColor = 'bg-amber-400/15'; }
+                          else if (cid === 3) { borderColor = 'border-blue-400'; bgColor = 'bg-blue-500/10'; }
+                          return (
+                            <div key={idx} className={`absolute border ${borderColor} ${bgColor} rounded-sm`}
+                              style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%` }} />
+                          );
+                        });
+                      })()}
                     </div>
                     
                     <div className="flex-1 flex flex-col justify-center space-y-6">
@@ -859,7 +887,24 @@ export default function UserLogsTab({ logs, deleteLog, triggerDownload }: UserLo
                               {activeRecommendation.primary_concern}
                             </td>
                             <td className="px-6 py-4 text-sm font-semibold text-slate-600">
-                              {activeRecommendation.recommended_programs}
+                              {(() => {
+                                const rp = activeRecommendation.recommended_programs;
+                                try {
+                                  const parsed = JSON.parse(rp);
+                                  if (typeof parsed === 'object' && parsed !== null) {
+                                    return (
+                                      <ul className="list-disc list-inside space-y-1 text-xs">
+                                        {Object.entries(parsed).map(([key, val]) => (
+                                          <li key={key}><span className="font-bold capitalize">{key.replace('_', ' ')}:</span> {String(val)}</li>
+                                        ))}
+                                      </ul>
+                                    );
+                                  }
+                                  return rp;
+                                } catch {
+                                  return rp;
+                                }
+                              })()}
                             </td>
                           </tr>
                         ) : (

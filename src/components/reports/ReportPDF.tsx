@@ -23,6 +23,7 @@ interface ReportData {
   analysisDate: string;
   thumb: string;
   highPriority: HighPriorityTree[];
+  predictions?: any;
 }
 
 interface PrintableReportTemplateProps {
@@ -33,17 +34,78 @@ interface PrintableReportTemplateProps {
     secondary_concern: string;
     recommended_programs: string;
   } | null;
+  isPreview?: boolean;
+  isPrintPortal?: boolean;
 }
 
-export default function PrintableReportTemplate({ report, recommendation }: PrintableReportTemplateProps) {
+export default function PrintableReportTemplate({ report, recommendation, isPreview = false, isPrintPortal = false }: PrintableReportTemplateProps) {
   if (!report) return null;
 
   const getHighRes = (url: string) => {
     if (!url) return "";
     return url.replace('w=100', 'w=1200').replace('w=150', 'w=1200');
   };
-  const cachedImg = localStorage.getItem(`analysis_img_${(report.originalName || report.block).toLowerCase()}`);
-  const displayImage = cachedImg || getHighRes(report.thumb);
+  const displayImage = getHighRes(report.thumb);
+
+  const renderBoundingBoxes = () => {
+    if (!report.predictions) return null;
+    let preds: any[] = [];
+    if (typeof report.predictions === 'string') {
+      try { preds = JSON.parse(report.predictions); } catch (e) {}
+    } else if (Array.isArray(report.predictions)) {
+      preds = report.predictions;
+    }
+
+    return preds.map((pred: any, idx: number) => {
+      const box = pred.box || pred.bbox;
+      if (!box) return null;
+      
+      const [xmin, ymin, xmax, ymax] = box;
+      let leftPct, topPct, widthPct, heightPct;
+      
+      if (xmin <= 1 && ymin <= 1 && xmax <= 1 && ymax <= 1) {
+        leftPct = xmin * 100;
+        topPct = ymin * 100;
+        widthPct = xmax * 100;
+        heightPct = ymax * 100;
+      } else {
+        const w = xmax > xmin ? xmax - xmin : xmax;
+        const h = ymax > ymin ? ymax - ymin : ymax;
+        leftPct = (xmin / 1024) * 100;
+        topPct = (ymin / 1024) * 100;
+        widthPct = (w / 1024) * 100;
+        heightPct = (h / 1024) * 100;
+      }
+      
+      const class_id = pred.class_id || pred.class;
+      let borderColor = 'border-emerald-500'; 
+      let bgColor = 'bg-emerald-500/10';
+
+      if (class_id === 0) { // Dead
+        borderColor = 'border-red-500';
+        bgColor = 'bg-red-500/10';
+      } else if (class_id === 4) { // Yellowing
+        borderColor = 'border-amber-500';
+        bgColor = 'bg-amber-500/10';
+      } else if (class_id === 3) { // Small Canopy
+        borderColor = 'border-blue-400';
+        bgColor = 'bg-blue-400/10';
+      }
+
+      return (
+        <div 
+          key={idx} 
+          className={`absolute border-[1px] ${borderColor} ${bgColor} rounded-[1px] pointer-events-none`}
+          style={{
+            left: `${leftPct}%`,
+            top: `${topPct}%`,
+            width: `${widthPct}%`,
+            height: `${heightPct}%`
+          }}
+        />
+      );
+    });
+  };
 
   // Derive counts
   const healthy = report.healthy;
@@ -57,7 +119,7 @@ export default function PrintableReportTemplate({ report, recommendation }: Prin
   const pDead = ((dead / total) * 100).toFixed(1);
 
   return (
-    <div className="printable-only p-8 bg-white text-slate-800 font-sans max-w-4xl mx-auto space-y-6">
+    <div className={`${isPreview ? "" : "printable-only"} p-8 bg-white text-slate-800 font-sans max-w-4xl mx-auto space-y-6`}>
       
       {/* Header */}
       <div className="flex justify-between items-center border-b-2 border-emerald-800 pb-4">
@@ -95,9 +157,17 @@ export default function PrintableReportTemplate({ report, recommendation }: Prin
         {/* Left: Detection Image */}
         <div className="space-y-2">
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Detection Image Output</span>
-          <div className="aspect-video rounded-xl overflow-hidden border border-[#e5e2d6] shadow-sm relative">
-            <img src={displayImage} className="w-full h-full object-cover" alt="Ortofoto Udara" />
-            <div className="absolute inset-0 bg-[#04211a]/5" />
+          <div className="relative border border-[#e5e2d6] rounded-xl overflow-hidden shadow-sm">
+            <img 
+              id={isPrintPortal ? "print-report-image" : undefined}
+              src={displayImage} 
+              className="w-full h-auto block" 
+              alt="Ortofoto Udara" 
+            />
+            <div className="absolute inset-0 bg-[#04211a]/5 print:hidden" />
+            <div className="absolute inset-0 pointer-events-none">
+              {renderBoundingBoxes()}
+            </div>
           </div>
           <p className="text-[9px] text-slate-400 font-medium italic">
             Gambar orthomosaic UAV terkompresi dengan deteksi kanopi aktif.
@@ -178,12 +248,32 @@ export default function PrintableReportTemplate({ report, recommendation }: Prin
             <div className="bg-[#fcfbf7] p-4 rounded-xl border border-[#e5e2d6] space-y-3">
               <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">Recommended Programs</span>
               <ul className="space-y-2 text-xs">
-                {recommendation.recommended_programs.split(',').map((prog: string, idx: number) => (
-                  <li key={idx} className="flex items-center gap-2 font-bold text-slate-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-700" />
-                    {prog.trim()}
-                  </li>
-                ))}
+                {(() => {
+                  const rp = recommendation.recommended_programs;
+                  try {
+                    const parsed = JSON.parse(rp);
+                    if (typeof parsed === 'object' && parsed !== null) {
+                      return Object.entries(parsed).map(([key, val], idx) => {
+                        const cleanKey = key.replace('_', ' ');
+                        return (
+                          <li key={idx} className="flex items-start gap-2 font-bold text-slate-700 leading-relaxed text-left">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 mt-1.5 shrink-0" />
+                            <span>
+                              <span className="capitalize">{cleanKey}</span>: {String(val)}
+                            </span>
+                          </li>
+                        );
+                      });
+                    }
+                  } catch (e) {}
+                  
+                  return rp.split(',').map((prog: string, idx: number) => (
+                    <li key={idx} className="flex items-center gap-2 font-bold text-slate-700 text-left">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 shrink-0" />
+                      {prog.trim()}
+                    </li>
+                  ));
+                })()}
               </ul>
             </div>
           </div>
