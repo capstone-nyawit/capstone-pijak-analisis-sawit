@@ -81,3 +81,32 @@ def mark_all_read(
     ).update({"is_read": True})
     db.commit()
     return {"message": "Semua notifikasi ditandai dibaca"}
+
+
+@router.delete("/{notification_id}")
+def delete_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    notif = db.query(UserNotification).filter(
+        UserNotification.id == notification_id,
+        UserNotification.user_id == current_user.id
+    ).first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notifikasi tidak ditemukan")
+    db.delete(notif)
+    db.commit()
+    return {"message": "Notifikasi dihapus"}
+
+
+@router.delete("/all/clear")
+def clear_all_notifications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db.query(UserNotification).filter(
+        UserNotification.user_id == current_user.id
+    ).delete()
+    db.commit()
+    return {"message": "Semua notifikasi dihapus"}

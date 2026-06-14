@@ -6,6 +6,8 @@ from app.db.session import get_db
 from app.models.inference_log import InferenceLog
 from app.models.user import User
 from app.api.routes.auth import get_current_user
+from app.db.redis import redis_client
+import json
 
 router = APIRouter()
 
@@ -15,27 +17,45 @@ def get_dashboard_stats(
     current_user: User = Depends(get_current_user)
 ):
     company_id = current_user.company_id
+    user_id = current_user.id
     
-    if not company_id:
-        return {
-            "classDistribution": [],
-            "riskHeatmap": [],
-            "recentHistory": [],
-            "kpiStats": []
-        }
+    # Check cache
+    cache_key = f"dashboard_stats:user:{user_id}"
+    if current_user.role == "admin" and company_id:
+        cache_key = f"dashboard_stats:company:{company_id}"
+        
+    cached_stats = redis_client.get(cache_key)
+    if cached_stats:
+        return json.loads(cached_stats)
 
-    total_trees = int(db.query(func.sum(InferenceLog.trees_count)).filter(
-        InferenceLog.company_id == company_id
-    ).scalar() or 0)
+    # Base query
+    base_query = db.query(InferenceLog)
+    if current_user.role == "admin" and company_id:
+        base_query = base_query.filter(InferenceLog.company_id == company_id)
+    else:
+        base_query = base_query.filter(InferenceLog.user_id == user_id)
+
+    # Query aggregates
+    aggregates = db.query(
+        func.sum(InferenceLog.trees_count).label("total"),
+        func.sum(InferenceLog.healthy_count).label("healthy"),
+        func.sum(InferenceLog.small_count).label("small"),
+        func.sum(InferenceLog.yellow_count).label("yellow"),
+        func.sum(InferenceLog.dead_count).label("dead")
+    )
     
-    healthy = int(total_trees * 0.84)
-    small = int(total_trees * 0.12)
-    yellow = int(total_trees * 0.03)
-    dead = total_trees - healthy - small - yellow
+    if current_user.role == "admin" and company_id:
+        aggregates = aggregates.filter(InferenceLog.company_id == company_id).first()
+    else:
+        aggregates = aggregates.filter(InferenceLog.user_id == user_id).first()
 
-    logs = db.query(InferenceLog).filter(
-        InferenceLog.company_id == company_id
-    ).order_by(InferenceLog.created_at.desc()).limit(4).all()
+    total_trees = int(aggregates.total or 0)
+    healthy = int(aggregates.healthy or 0)
+    small = int(aggregates.small or 0)
+    yellow = int(aggregates.yellow or 0)
+    dead = int(aggregates.dead or 0)
+
+    logs = base_query.order_by(InferenceLog.created_at.desc()).limit(4).all()
 
     recentHistory = [
         {
@@ -45,7 +65,8 @@ def get_dashboard_stats(
             "trees": log.trees_count,
             "status": log.status,
             "confidence": f"{log.confidence_score}%",
-            "thumb": 'https://images.unsplash.com/photo-1627883907153-61b453e00cc2?auto=format&fit=crop&w=100&q=80'
+            "thumb": log.image_url if log.image_url else 'https://images.unsplash.com/photo-1627883907153-61b453e00cc2?auto=format&fit=crop&w=100&q=80',
+            "predictions": log.results_json
         }
         for log in logs
     ]
@@ -80,7 +101,7 @@ def get_dashboard_stats(
                 "log_id": log.log_code
             })
 
-    return {
+    stats_response = {
         "classDistribution": [
             { "name": 'Healthy', "value": healthy, "color": '#10b981' },
             { "name": 'Small', "value": small, "color": '#3b82f6' },
@@ -90,10 +111,15 @@ def get_dashboard_stats(
         "priorityZones": priority_zones,
         "recentHistory": recentHistory,
         "kpiStats": [
-            { "label": 'Total Trees', "val": f"{total_trees:,}", "trend": '+1.2%', "trendUp": True, "color": 'text-[#04211a]', "border": 'border-slate-200' },
-            { "label": 'Healthy', "val": f"{healthy:,}", "trend": '+2.4%', "trendUp": True, "color": 'text-emerald-700', "border": 'border-emerald-200' },
-            { "label": 'Small Canopy', "val": f"{small:,}", "trend": '-0.5%', "trendUp": False, "color": 'text-blue-700', "border": 'border-blue-200' },
-            { "label": 'Yellowing', "val": f"{yellow:,}", "trend": '+12.4%', "trendUp": False, "color": 'text-amber-700', "border": 'border-amber-200' },
-            { "label": 'Dead / Missing', "val": f"{dead:,}", "trend": '-2.1%', "trendUp": True, "color": 'text-red-700', "border": 'border-red-200' },
+            { "label": 'Total Trees', "val": f"{total_trees:,}", "trend": '+0.0%', "trendUp": True, "color": 'text-[#04211a]', "border": 'border-slate-200' },
+            { "label": 'Healthy', "val": f"{healthy:,}", "trend": '+0.0%', "trendUp": True, "color": 'text-emerald-700', "border": 'border-emerald-200' },
+            { "label": 'Small Canopy', "val": f"{small:,}", "trend": '+0.0%', "trendUp": False, "color": 'text-blue-700', "border": 'border-blue-200' },
+            { "label": 'Yellowing', "val": f"{yellow:,}", "trend": '+0.0%', "trendUp": False, "color": 'text-amber-700', "border": 'border-amber-200' },
+            { "label": 'Dead / Missing', "val": f"{dead:,}", "trend": '+0.0%', "trendUp": True, "color": 'text-red-700', "border": 'border-red-200' },
         ]
     }
+
+    # Set cache for 1 hour
+    redis_client.setex(cache_key, 3600, json.dumps(stats_response))
+
+    return stats_response

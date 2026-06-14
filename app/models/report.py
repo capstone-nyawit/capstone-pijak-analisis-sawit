@@ -6,9 +6,12 @@ class Report(Base):
     __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True, index=True)
-    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     report_code = Column(String(50), nullable=False, unique=True, index=True) # e.g. RPT-104
     name = Column(String(200), nullable=False)
     type = Column(String(20), default="PDF") # PDF, CSV, XLSX
     size = Column(String(20), nullable=True) # e.g. "2.4 MB"
+    inference_log_id = Column(Integer, ForeignKey("inference_logs.id", ondelete="CASCADE"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+

@@ -125,9 +125,18 @@ def get_user_activity_xlsx(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user_token)
 ):
-    if current_user.get("role") != "admin":
+    # Allow both admin and regular user as long as they belong to a company
+    user_id = current_user.get("id")
+    db_user = db.query(User).filter(User.id == user_id).first()
+    if not db_user:
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    company_id = db_user.company_id
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Anda tidak terikat ke perusahaan manapun")
+
+    # If role is user, we still let them download the company report for now
+    # per user request.
     # ── Time bounds ──────────────────────────────────────────────────────────
     now_utc      = datetime.utcnow()
     today        = now_utc.date()
@@ -141,13 +150,14 @@ def get_user_activity_xlsx(
     gen_ts       = now_utc.strftime("%b %d, %Y %I:%M %p UTC")
     report_id    = str(uuid.uuid4()).upper()
     # ── Derive data from ActivityLog + InferenceLog + Report + User ──────────
-    users = db.query(User).order_by(User.full_name).all()
+    users = db.query(User).filter(User.company_id == company_id).order_by(User.full_name).all()
 
     # Logins per user this month (from ActivityLog)
     logins_month = db.query(
         ActivityLog.user_id,
         func.count(ActivityLog.id).label("cnt")
     ).filter(
+        ActivityLog.company_id == company_id,
         ActivityLog.action == "LOGIN",
         ActivityLog.created_at.between(start_of_m, end_of_m)
     ).group_by(ActivityLog.user_id).all()
@@ -159,6 +169,7 @@ def get_user_activity_xlsx(
         ActivityLog.user_id,
         func.max(ActivityLog.created_at).label("last_at")
     ).filter(
+        ActivityLog.company_id == company_id,
         ActivityLog.action == "LOGIN"
     ).group_by(ActivityLog.user_id).all()
 
@@ -169,6 +180,7 @@ def get_user_activity_xlsx(
         InferenceLog.user_name,
         func.count(InferenceLog.id).label("cnt")
     ).filter(
+        InferenceLog.company_id == company_id,
         InferenceLog.created_at.between(start_of_m, end_of_m)
     ).group_by(InferenceLog.user_name).all()
 
@@ -180,11 +192,13 @@ def get_user_activity_xlsx(
 
     # Reports generated this month (from Report table)
     total_reports_month = db.query(func.count(Report.id)).filter(
+        Report.company_id == company_id,
         Report.created_at.between(start_of_m, end_of_m)
     ).scalar() or 0
 
     # Total analyses this month
     total_analyses_month = db.query(func.count(InferenceLog.id)).filter(
+        InferenceLog.company_id == company_id,
         InferenceLog.created_at.between(start_of_m, end_of_m)
     ).scalar() or 0
 
@@ -193,16 +207,19 @@ def get_user_activity_xlsx(
 
     # All analyses for this month
     all_analyses = db.query(InferenceLog).filter(
+        InferenceLog.company_id == company_id,
         InferenceLog.created_at.between(start_of_m, end_of_m)
     ).order_by(InferenceLog.created_at.desc()).all()
 
     # All reports this month
     all_reports = db.query(Report).filter(
+        Report.company_id == company_id,
         Report.created_at.between(start_of_m, end_of_m)
     ).order_by(Report.created_at.desc()).all()
 
     # All activity logs for this month
     all_activities = db.query(ActivityLog).filter(
+        ActivityLog.company_id == company_id,
         ActivityLog.created_at.between(start_of_m, end_of_m)
     ).order_by(ActivityLog.created_at.desc()).all()
 

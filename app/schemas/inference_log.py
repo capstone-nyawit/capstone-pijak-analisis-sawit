@@ -11,10 +11,15 @@ class InferenceLogBase(BaseModel):
     confidence_score: float
     status: str
     image_url: Optional[str] = None
+    results_json: Optional[list] = None
+    healthy_count: Optional[int] = 0
+    small_count: Optional[int] = 0
+    yellow_count: Optional[int] = 0
+    dead_count: Optional[int] = 0
 
 class InferenceLogResponse(InferenceLogBase):
     id: int
-    company_id: int
+    company_id: Optional[int] = None
     created_at: datetime
 
     class Config:

@@ -21,6 +21,7 @@ from app.models.company import Company
 from app.models.notification import Notification
 from app.models.activity_log import ActivityLog
 from fastapi.responses import RedirectResponse
+from app.core.logging_tasks import log_activity_async, create_notification_async
 from app.crud import crud_user
 from app.core.security import (
     verify_password, create_access_token, get_password_hash, 
@@ -39,17 +40,7 @@ def get_current_user(token_payload: dict = Depends(get_current_user_token), db: 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User tidak ditemukan")
         
-    # Auto-assign a personal company if user doesn't have one
-    if not user.company_id:
-        from app.models.company import Company
-        company_name = f"Personal - {user.full_name or user.username or 'User'}"
-        company = Company(name=company_name)
-        db.add(company)
-        db.commit()
-        db.refresh(company)
-        user.company_id = company.id
-        user.company_name = company_name
-        db.commit()
+    # Auto-assigning a personal company is removed to allow true individual accounts
         
     return user
 
@@ -59,7 +50,7 @@ def require_admin(current_user: User = Depends(get_current_user)):
     return current_user
 
 @router.post("/register/individual", response_model=UserResponse)
-def register_individual(user_in: RegisterIndividual, db: Session = Depends(get_db)):
+def register_individual(user_in: RegisterIndividual, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if crud_user.get_user_by_email(db, email=user_in.email):
         raise HTTPException(status_code=400, detail="Email sudah terdaftar.")
     
@@ -71,17 +62,37 @@ def register_individual(user_in: RegisterIndividual, db: Session = Depends(get_d
         role="user",
         status="active"
     )
+    
+    background_tasks.add_task(
+        log_activity_async,
+        company_id=None,
+        user_id=user.id,
+        user_name=user.full_name or user.username,
+        user_role=user.role,
+        action="REGISTER",
+        detail="User registered a new individual account."
+    )
+    
     return user
 
 @router.post("/register/organization", response_model=UserResponse)
-def register_organization(org_in: RegisterOrganization, db: Session = Depends(get_db)):
+def register_organization(org_in: RegisterOrganization, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if crud_user.get_user_by_email(db, email=org_in.email):
         raise HTTPException(status_code=400, detail="Email sudah terdaftar.")
     
-    from sqlalchemy import func
-    existing_company = db.query(Company).filter(func.lower(Company.name) == func.lower(org_in.company_name)).first()
-    if existing_company:
-        raise HTTPException(status_code=400, detail="Nama Organisasi sudah ada.")
+    # Normalize and validate company name (alphanumeric only, case-insensitive)
+    def normalize_company_name(s: str) -> str:
+        return "".join(c for c in s.lower() if c.isalnum())
+
+    input_normalized = normalize_company_name(org_in.company_name)
+    if not input_normalized:
+        raise HTTPException(status_code=400, detail="Nama Organisasi tidak valid.")
+
+    existing_companies = db.query(Company.name).all()
+    for (c_name,) in existing_companies:
+        if normalize_company_name(c_name) == input_normalized:
+            raise HTTPException(status_code=400, detail="Nama Organisasi sudah ada.")
+
         
     company = Company(name=org_in.company_name)
     db.add(company)
@@ -98,6 +109,17 @@ def register_organization(org_in: RegisterOrganization, db: Session = Depends(ge
         company_name=org_in.company_name,
         status="active"
     )
+    
+    background_tasks.add_task(
+        log_activity_async,
+        company_id=company.id,
+        user_id=user.id,
+        user_name=user.full_name or user.username,
+        user_role=user.role,
+        action="REGISTER",
+        detail="Admin registered a new organization."
+    )
+    
     return user
 
 @router.get("/verify-email")
@@ -136,14 +158,12 @@ def join_organization(join_in: JoinOrganization, background_tasks: BackgroundTas
         company_name=company_name,
         status="pending"
     )
-    
-    new_notif = Notification(
+    background_tasks.add_task(
+        create_notification_async,
         company_id=company_id,
         message=f"Pengguna baru ({join_in.full_name}) meminta bergabung. Menunggu persetujuan.",
-        type="info"
+        notif_type="info"
     )
-    db.add(new_notif)
-    db.commit()
     
     try:
         from app.core.websocket import manager
@@ -180,8 +200,9 @@ def login(user_in: UserLogin, background_tasks: BackgroundTasks, db: Session = D
             
     background_tasks.add_task(update_presence, user.id)
     
-    # Record LOGIN activity
-    db_log = ActivityLog(
+    # Record LOGIN activity asynchronously
+    background_tasks.add_task(
+        log_activity_async,
         company_id=user.company_id,
         user_id=user.id,
         user_name=user.full_name or user.username,
@@ -189,8 +210,6 @@ def login(user_in: UserLogin, background_tasks: BackgroundTasks, db: Session = D
         action="LOGIN",
         detail="User logged in successfully"
     )
-    db.add(db_log)
-    db.commit()
     
     return {
         "access_token": access_token, 
@@ -199,9 +218,10 @@ def login(user_in: UserLogin, background_tasks: BackgroundTasks, db: Session = D
     }
 
 @router.post("/logout")
-def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Record LOGOUT activity
-    db_log = ActivityLog(
+def logout(background_tasks: BackgroundTasks, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Record LOGOUT activity asynchronously
+    background_tasks.add_task(
+        log_activity_async,
         company_id=current_user.company_id,
         user_id=current_user.id,
         user_name=current_user.full_name or current_user.username,
@@ -209,8 +229,6 @@ def logout(current_user: User = Depends(get_current_user), db: Session = Depends
         action="LOGOUT",
         detail="User logged out successfully"
     )
-    db.add(db_log)
-    db.commit()
     
     try:
         from app.db.redis import redis_client

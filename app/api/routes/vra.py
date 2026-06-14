@@ -32,12 +32,6 @@ def analyze_vra(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User must belong to a company to run analysis."
-        )
-
     # 1. Generate recommendation via rule engine
     rec_data = VraRuleEngine.generate_recommendation(
         healthy=request.healthy_count,
@@ -52,6 +46,7 @@ def analyze_vra(
     
     inference_log = InferenceLog(
         company_id=current_user.company_id,
+        user_id=current_user.id,
         log_code=log_code,
         user_name=current_user.full_name or current_user.email,
         user_role=current_user.role,
@@ -81,6 +76,7 @@ def analyze_vra(
     report_code = generate_unique_report_code(db)
     report = Report(
         company_id=current_user.company_id,
+        user_id=current_user.id,
         report_code=report_code,
         name=request.block_name,
         type="PDF",
@@ -99,16 +95,14 @@ def get_recommendation_by_log_code(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User must belong to a company."
-        )
-
-    log = db.query(InferenceLog).filter(
-        InferenceLog.log_code == log_code,
-        InferenceLog.company_id == current_user.company_id
-    ).first()
+    query = db.query(InferenceLog).filter(InferenceLog.log_code == log_code)
+    
+    if current_user.role == "admin" and current_user.company_id:
+        query = query.filter(InferenceLog.company_id == current_user.company_id)
+    else:
+        query = query.filter(InferenceLog.user_id == current_user.id)
+        
+    log = query.first()
     if not log:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -150,12 +144,6 @@ def get_recommendation_by_id(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if not current_user.company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User must belong to a company."
-        )
-
     vra_rec = db.query(VraRecommendation).filter(
         VraRecommendation.id == inference_log_id
     ).first()
@@ -166,10 +154,13 @@ def get_recommendation_by_id(
         )
     
     # Verify authorization
-    log = db.query(InferenceLog).filter(
-        InferenceLog.id == vra_rec.inference_log_id,
-        InferenceLog.company_id == current_user.company_id
-    ).first()
+    query = db.query(InferenceLog).filter(InferenceLog.id == vra_rec.inference_log_id)
+    if current_user.role == "admin" and current_user.company_id:
+        query = query.filter(InferenceLog.company_id == current_user.company_id)
+    else:
+        query = query.filter(InferenceLog.user_id == current_user.id)
+        
+    log = query.first()
     if not log:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
