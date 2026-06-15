@@ -153,11 +153,9 @@ async def predict_image(
 
         # 7. Clear Dashboard Cache in Redis
         try:
-            if current_user.role == "admin" and current_user.company_id:
-                cache_key = f"dashboard_stats:company:{current_user.company_id}"
-            else:
-                cache_key = f"dashboard_stats:user:{current_user.id}"
-            redis_client.delete(cache_key)
+            redis_client.delete(f"dashboard_stats:user:{current_user.id}")
+            if current_user.company_id:
+                redis_client.delete(f"dashboard_stats:company:{current_user.company_id}")
         except Exception as e:
             print(f"Failed to delete dashboard cache from Redis: {e}")
 
@@ -202,4 +200,13 @@ async def predict_image(
         )
         db.add(failed_log)
         db.commit()
+
+        # Clean cache so "Total Analyses" KPI updates
+        try:
+            redis_client.delete(f"dashboard_stats:user:{current_user.id}")
+            if current_user.company_id:
+                redis_client.delete(f"dashboard_stats:company:{current_user.company_id}")
+        except Exception as e:
+            pass
+
         raise e

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Any
 from datetime import datetime
 
 class InferenceLogBase(BaseModel):
@@ -11,7 +11,7 @@ class InferenceLogBase(BaseModel):
     confidence_score: float
     status: str
     image_url: Optional[str] = None
-    results_json: Optional[list] = None
+    results_json: Optional[Any] = None
     healthy_count: Optional[int] = 0
     small_count: Optional[int] = 0
     yellow_count: Optional[int] = 0
