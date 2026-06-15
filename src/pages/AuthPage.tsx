@@ -66,9 +66,11 @@ export default function AuthPage() {
     e.preventDefault();
     setIsLoading(true);
 
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+
     try {
       if (authView === "login") {
-        const res = await fetch("http://localhost:8000/api/login", {
+        const res = await fetch(`${apiUrl}/login`, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({identifier: email, password: password}),
@@ -84,7 +86,7 @@ export default function AuthPage() {
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("role", data.role);
 
-        const meRes = await fetch("http://localhost:8000/api/users/me", {
+        const meRes = await fetch(`${apiUrl}/users/me`, {
           headers: {Authorization: `Bearer ${data.access_token}`},
         });
         if (meRes.ok) {
@@ -102,7 +104,7 @@ export default function AuthPage() {
       } else if (authView === "signup") {
         if (accountType === "individual") {
           const res = await fetch(
-            "http://localhost:8000/api/register/individual",
+            `${apiUrl}/register/individual`,
             {
               method: "POST",
               headers: {"Content-Type": "application/json"},
@@ -119,7 +121,7 @@ export default function AuthPage() {
         } else if (accountType === "organization") {
           if (orgChoice === "create") {
             const res = await fetch(
-              "http://localhost:8000/api/register/organization",
+              `${apiUrl}/register/organization`,
               {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
@@ -143,7 +145,7 @@ export default function AuthPage() {
               resetAuthView("login");
             }, 5000);
           } else {
-            const res = await fetch("http://localhost:8000/api/join", {
+            const res = await fetch(`${apiUrl}/join`, {
               method: "POST",
               headers: {"Content-Type": "application/json"},
               body: JSON.stringify({
