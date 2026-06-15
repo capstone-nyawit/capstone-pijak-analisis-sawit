@@ -46,7 +46,7 @@ export default function FeatureCards() {
                                         </div>
                                     </div>
                                     <h2 className="mt-8 text-center text-xl font-semibold tracking-tight text-[#F8FAF6]">AI Object Detection</h2>
-                                    <p className="mt-3 text-center text-sm font-light text-white/60 leading-relaxed">Pinpoint individual oil palm crowns instantly using our custom Faster R-CNN models.</p>
+                                    <p className="mt-3 text-center text-sm font-light text-white/60 leading-relaxed">Pinpoint individual oil palm crowns instantly using our custom RetinaNet models.</p>
                                 </CardContent>
                             </Card>
                         </motion.div>

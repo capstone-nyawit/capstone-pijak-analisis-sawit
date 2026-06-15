@@ -12,7 +12,7 @@ const steps = [
   },
   {
     title: "Neural Analysis",
-    description: "Our Faster R-CNN engine identifies every tree crown and cross-references multispectral data.",
+    description: "Our RetinaNet engine identifies every tree crown and cross-references multispectral data.",
     icon: Cpu,
     step: "02"
   },

@@ -25,6 +25,8 @@ export default function AdminUsersTab({ usersList, handleRoleChange, handleAppro
   const [copied, setCopied] = useState(false);
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
 
+  const adminCount = usersList.filter(user => user.role === 'Admin').length;
+
   const fetchInviteStatus = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -191,7 +193,13 @@ export default function AdminUsersTab({ usersList, handleRoleChange, handleAppro
                   <select 
                     value={user.role} 
                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                    className="text-sm font-semibold text-slate-700 bg-slate-100 px-2.5 py-1.5 rounded-md border-r-8 border-transparent outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    disabled={user.role === 'Admin' && adminCount <= 1}
+                    title={user.role === 'Admin' && adminCount <= 1 ? "Tidak dapat mengubah role satu-satunya Admin" : ""}
+                    className={`text-sm font-semibold px-2.5 py-1.5 rounded-md border-r-8 border-transparent outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      user.role === 'Admin' && adminCount <= 1 
+                        ? 'bg-slate-50 text-slate-400 cursor-not-allowed' 
+                        : 'bg-slate-100 text-slate-700 cursor-pointer'
+                    }`}
                   >
                     <option value="User">User</option>
                     <option value="Admin">Admin</option>
@@ -215,13 +223,23 @@ export default function AdminUsersTab({ usersList, handleRoleChange, handleAppro
                         <CheckCircle2 className="w-4 h-4" />
                       </button>
                     )}
-                    <button 
-                      onClick={() => setUserToDelete({ id: user.id, name: user.name })}
-                      className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50 cursor-pointer active:scale-95"
-                      title="Hapus Pengguna"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {(() => {
+                      const isOnlyAdmin = user.role === 'Admin' && adminCount <= 1;
+                      return (
+                        <button 
+                          onClick={() => !isOnlyAdmin && setUserToDelete({ id: user.id, name: user.name })}
+                          className={`p-2 transition-colors rounded-lg ${
+                            isOnlyAdmin 
+                              ? 'text-slate-300 cursor-not-allowed' 
+                              : 'text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer active:scale-95'
+                          }`}
+                          title={isOnlyAdmin ? "Tidak dapat menghapus satu-satunya Admin" : "Hapus Pengguna"}
+                          disabled={isOnlyAdmin}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      );
+                    })()}
                   </div>
                 </td>
               </tr>

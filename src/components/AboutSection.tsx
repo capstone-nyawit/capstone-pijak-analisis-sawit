@@ -4,7 +4,7 @@ import { Target, Trees, BarChart3, Droplets, Scan } from 'lucide-react';
 const aboutFeatures = [
   {
     title: 'Object Detection',
-    description: 'Accurate localization of individual oil palm trees using advanced Faster R-CNN computer vision models.',
+    description: 'Accurate localization of individual oil palm trees using advanced RetinaNet computer vision models.',
     icon: Scan
   },
   {
@@ -71,7 +71,7 @@ export default function AboutSection() {
                 By combining high-altitude UAV drone imagery with advanced computer vision, our platform provides comprehensive visibility and analysis that ground surveys simply cannot match. We aim to solve the critical "blind spot" in large-scale oil palm estate management by shifting from reactive to proactive monitoring.
               </p>
               <p>
-                Our core technology leverages <strong className="text-[#F8FAF6] font-semibold">Faster R-CNN</strong> deep learning architectures to detect individual oil palm crowns and automatically classify them into 4 distinct health categories: Healthy, Yellowing, Small Canopy, and Dead. This enables plantation managers to view automated analysis and execute targeted, data-driven <strong className="text-[#F8FAF6] font-semibold">VRA (Variable Rate Application)</strong> interventions.
+                Our core technology leverages <strong className="text-[#F8FAF6] font-semibold">RetinaNet</strong> deep learning architectures to detect individual oil palm crowns and automatically classify them into 4 distinct health categories: Healthy, Yellowing, Small Canopy, and Dead. This enables plantation managers to view automated analysis and execute targeted, data-driven <strong className="text-[#F8FAF6] font-semibold">VRA (Variable Rate Application)</strong> interventions.
               </p>
             </div>
           </motion.div>
