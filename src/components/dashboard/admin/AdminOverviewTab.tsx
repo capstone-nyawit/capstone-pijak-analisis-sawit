@@ -76,27 +76,27 @@ export default function AdminOverviewTab({
     stats?.classDistribution?.reduce(
       (acc: number, curr: any) => acc + curr.value,
       0,
-    ) || 142500;
+    ) || 0;
   const healthyCount =
     stats?.classDistribution?.find((c: any) => c.name === "Healthy")?.value ||
-    119700;
+    0;
   const smallCount =
     stats?.classDistribution?.find((c: any) => c.name === "Small")?.value ||
-    17100;
+    0;
   const yellowCount =
     stats?.classDistribution?.find((c: any) => c.name === "Yellow")?.value ||
-    4275;
+    0;
   const deadCount =
     stats?.classDistribution?.find((c: any) => c.name === "Dead")?.value ||
-    1425;
+    0;
 
   const treeHealthPct =
-    totalTrees > 0 ? ((healthyCount / totalTrees) * 100).toFixed(1) : "84.0";
+    totalTrees > 0 ? ((healthyCount / totalTrees) * 100).toFixed(1) : "0.0";
   const attentionNeededPct =
     totalTrees > 0
       ? (((smallCount + yellowCount + deadCount) / totalTrees) * 100).toFixed(1)
-      : "16.0";
-  const totalAnalysesCount = logs?.length || 1248;
+      : "0.0";
+  const totalAnalysesCount = logs ? logs.length : 0;
 
   // 2. Dynamic Charts Data Generation
   const {trendData, volumeData} = useMemo(() => {
@@ -168,22 +168,13 @@ export default function AdminOverviewTab({
 
     const tData = last7Days.map((d) => {
       const healthPct =
-        d.total > 0 ? (d.healthy / d.total) * 100 : 80 + Math.random() * 5;
+        d.total > 0 ? (d.healthy / d.total) * 100 : 0;
       return {
         date: d.dateStr,
         health: Number(healthPct.toFixed(1)),
-        attention: Number((100 - healthPct).toFixed(1)),
+        attention: d.total > 0 ? Number((100 - healthPct).toFixed(1)) : 0,
       };
     });
-
-    // Fallback if no logs
-    if ((logs || []).length === 0) {
-      vData[0] = {week: "W1", completed: 18, failed: 1};
-      vData[1] = {week: "W2", completed: 26, failed: 0};
-      vData[2] = {week: "W3", completed: 32, failed: 2};
-      vData[3] = {week: "W4", completed: 29, failed: 1};
-      vData[4] = {week: "W5", completed: 38, failed: 0};
-    }
 
     return {trendData: tData, volumeData: vData};
   }, [logs]);
