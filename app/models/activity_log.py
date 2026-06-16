@@ -7,7 +7,7 @@ class ActivityLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     user_name = Column(String(100), nullable=False)
     user_role = Column(String(50), nullable=False)
     action = Column(String(50), nullable=False) # e.g. "LOGIN", "LOGOUT"

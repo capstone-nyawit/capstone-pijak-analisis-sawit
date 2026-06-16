@@ -1,28 +1,28 @@
-services:
-  db:
-    image: mysql:8.0
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: nyawit_ai
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    command: --default-authentication-plugin=mysql_native_password
+version: '3.8'
 
+services:
   api:
     build: .
     restart: unless-stopped
+    ports:
+      - "8050:8000" # Menerima lalu lintas dari Nginx VPS di port 8050
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:
-      MYSQL_HOST: db
+      MYSQL_HOST: host.docker.internal # Sesuaikan jika menggunakan DB native
       MYSQL_PORT: 3306
-    ports:
-      - "8000:8000"
     depends_on:
-      - db
+      - redis
 
-volumes:
-  mysql_data:
+  redis:
+    image: redis:alpine
+    container_name: nyawit-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 200M

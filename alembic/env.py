@@ -9,7 +9,7 @@ from app.db.base import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-config = context.config
+config = context.config  # type: ignore
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -63,7 +63,7 @@ def run_migrations_online() -> None:
 
     """
     settings = get_settings()
-    config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
+    config.set_main_option("sqlalchemy.url", settings.database_url)
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

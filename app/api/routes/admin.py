@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.core.security import get_current_user_token
+from app.api.routes.auth import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from app.db.session import get_db
@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 router = APIRouter()
 
 @router.get("/system")
-def get_admin_system_stats(current_user: dict = Depends(get_current_user_token)):
-    if current_user.get("role") != "admin":
+def get_admin_system_stats(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
     
     return {
@@ -27,20 +27,23 @@ def get_admin_system_stats(current_user: dict = Depends(get_current_user_token))
 @router.get("/reports/executive")
 def get_executive_report(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user_token)
+    current_user: User = Depends(get_current_user)
 ):
-    if current_user.get("role") != "admin":
+    if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    total_analyses = db.query(InferenceLog).count()
-    total_trees = db.query(func.sum(InferenceLog.trees_count)).scalar() or 0
+    company_id = current_user.company_id
+
+    total_analyses = db.query(InferenceLog).filter(InferenceLog.company_id == company_id).count()
+    total_trees = db.query(func.sum(InferenceLog.trees_count)).filter(InferenceLog.company_id == company_id).scalar() or 0
 
     stats = db.query(
         func.sum(VraRecommendation.healthy_count).label("healthy"),
         func.sum(VraRecommendation.yellowing_count).label("yellowing"),
         func.sum(VraRecommendation.small_canopy_count).label("small_canopy"),
         func.sum(VraRecommendation.dead_count).label("dead")
-    ).first()
+    ).join(InferenceLog, VraRecommendation.inference_log_id == InferenceLog.id)\
+     .filter(InferenceLog.company_id == company_id).first()
 
     healthy = int(stats.healthy or 0)
     yellowing = int(stats.yellowing or 0)
@@ -57,6 +60,7 @@ def get_executive_report(
         func.sum(VraRecommendation.healthy_count).label("healthy"),
         func.sum(InferenceLog.trees_count).label("total")
     ).join(VraRecommendation, VraRecommendation.inference_log_id == InferenceLog.id)\
+     .filter(InferenceLog.company_id == company_id)\
      .filter(InferenceLog.created_at >= thirty_days_ago)\
      .group_by(func.date(InferenceLog.created_at))\
      .order_by("date")\
@@ -92,6 +96,7 @@ def get_executive_report(
         InferenceLog.trees_count,
         VraRecommendation.recommended_programs
     ).join(VraRecommendation, VraRecommendation.inference_log_id == InferenceLog.id)\
+     .filter(InferenceLog.company_id == company_id)\
      .order_by(InferenceLog.created_at.desc()).all()
 
     # Case-insensitive grouping
@@ -211,22 +216,6 @@ def get_executive_report(
         })
 
     # Section 3: Executive Summary (Agricultural analyst style matching user's prompt specifications)
-    # LLM System Prompt:
-    # "You are an agricultural analyst writing a monthly executive summary 
-    # for directors and shareholders. Write 3-4 sentences covering:
-    # (1) overall plantation health index and whether it improved or declined
-    # (2) total UAV analyses completed and trees monitored this month
-    # (3) general health trend (stable/improving/declining)
-    # (4) one brief mention of the highest priority concern 
-    #     — zone name only, no detailed breakdown
-    # (5) close with one forward-looking sentence about recommended focus
-    # Rules:
-    # - Do NOT list multiple zones or detailed anomaly counts
-    # - Do NOT write like an operational field report
-    # - Tone: strategic, concise, suitable for board-level reading
-    # - Language: Bahasa Indonesia
-    # - Only use numbers provided in the data — do not hallucinate
-    # - Max 4 sentences"
     worst_zone = priority_zones[0] if priority_zones else None
     worst_zone_name = worst_zone["block"] if worst_zone else "N/A"
     worst_zone_anomalies = worst_zone["anomalies"] if worst_zone else 0
@@ -284,6 +273,8 @@ def get_executive_report(
         (func.lower(InferenceLog.user_name) == func.lower(User.full_name)) |
         (func.lower(InferenceLog.user_name) == func.lower(User.username))
     ).filter(
+        User.company_id == company_id,
+        InferenceLog.company_id == company_id,
         InferenceLog.created_at.between(start_of_month, end_of_month)
     ).group_by(User.id).all()
 
@@ -300,6 +291,7 @@ def get_executive_report(
             InferenceLog.user_name,
             func.count(InferenceLog.id).label("count")
         ).filter(
+            InferenceLog.company_id == company_id,
             InferenceLog.created_at.between(start_of_month, end_of_month)
         ).group_by(InferenceLog.user_name).all()
         for row in logs_grouped:
@@ -328,6 +320,7 @@ def get_executive_report(
         func.date(InferenceLog.created_at).label("day_date"),
         func.count(InferenceLog.id).label("count")
     ).filter(
+        InferenceLog.company_id == company_id,
         InferenceLog.created_at.between(start_of_month, end_of_month)
     ).group_by(func.date(InferenceLog.created_at)).order_by("day_date").all()
 
@@ -357,6 +350,7 @@ def get_executive_report(
         InferenceLog.user_name,
         func.count(InferenceLog.id).label("count")
     ).filter(
+        InferenceLog.company_id == company_id,
         InferenceLog.created_at.between(start_of_month, end_of_month)
     ).group_by(
         func.date(InferenceLog.created_at),
@@ -402,19 +396,20 @@ def get_executive_report(
 @router.get("/reports/user-activity")
 def get_user_activity_report(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user_token)
+    current_user: User = Depends(get_current_user)
 ):
-    if current_user.get("role") != "admin":
+    if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    users = db.query(User).all()
+    company_id = current_user.company_id
+    users = db.query(User).filter(User.company_id == company_id).all()
     
     # Fetch logs count and confidence per user
     logs_by_user = db.query(
         InferenceLog.user_name,
         func.count(InferenceLog.id).label("count"),
         func.avg(InferenceLog.confidence_score).label("avg_conf")
-    ).group_by(InferenceLog.user_name).all()
+    ).filter(InferenceLog.company_id == company_id).group_by(InferenceLog.user_name).all()
 
     logs_map = {}
     for row in logs_by_user:
@@ -446,10 +441,12 @@ def get_user_activity_report(
 def get_zone_comparison_report(
     month: str = "Jun 2026",
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user_token)
+    current_user: User = Depends(get_current_user)
 ):
-    if current_user.get("role") != "admin":
+    if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
+
+    company_id = current_user.company_id
 
     # Fetch all logs with their recommendation details ordered by date desc
     all_logs = db.query(
@@ -462,6 +459,7 @@ def get_zone_comparison_report(
         InferenceLog.trees_count,
         InferenceLog.created_at
     ).join(VraRecommendation, VraRecommendation.inference_log_id == InferenceLog.id)\
+     .filter(InferenceLog.company_id == company_id)\
      .order_by(InferenceLog.created_at.desc()).all()
 
     # Case-insensitive grouping — keep ALL rows per zone key for coverage count
@@ -621,5 +619,3 @@ def get_zone_comparison_report(
         "dispatchSummary": dispatch_summary,
         "monitoringPeriod": f"{month} vs {prev_month}"
     }
-
-

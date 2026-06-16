@@ -1,11 +1,12 @@
+import os
 import httpx
 from fastapi import UploadFile, HTTPException
 import logging
 
 logger = logging.getLogger(__name__)
 
-# URL of the ML Service running in WSL
-ML_SERVICE_URL = "http://127.0.0.1:8001/predict"
+# URL of the ML Service running in WSL / Host
+ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://127.0.0.1:8001/predict")
 
 async def predict_palm(image_url: str):
     """
