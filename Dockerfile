@@ -11,10 +11,13 @@ RUN python -m pip install --no-cache-dir --upgrade pip && \
     python -m pip install --no-cache-dir uv && \
     uv sync --frozen --no-dev
 
-COPY alembic.ini ./
+COPY alembic.ini main.py ./
 COPY alembic ./alembic
 COPY app ./app
 
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENV HOST=0.0.0.0
+ENV PORT=8000
+
+CMD ["uv", "run", "python", "main.py"]

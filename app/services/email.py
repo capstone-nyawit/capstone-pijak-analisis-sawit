@@ -61,7 +61,7 @@ def send_invite_email(to_email: str, invite_code: str, company_name: str):
     return send_system_email(to_email, f"Undangan Bergabung - {company_name}", html)
 
 def send_reset_password_email(to_email: str, token: str):
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip('/')
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip('/')
     reset_link = f"{frontend_url}/reset-password?token={token}"
     html = f"""<html><body>
         <h3>Atur Ulang Password Anda,</h3>
@@ -71,7 +71,7 @@ def send_reset_password_email(to_email: str, token: str):
     return send_system_email(to_email, "Atur Ulang Password - Nyawit AI", html)
 
 def send_approval_email(to_email: str, company_name: str):
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip('/')
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip('/')
     html = f"""<html><body>
         <h3>Selamat!</h3>
         <p>Admin dari organisasi <b>{company_name}</b> telah menyetujui pendaftaran Anda.</p>
@@ -81,7 +81,7 @@ def send_approval_email(to_email: str, company_name: str):
     return send_system_email(to_email, "Pendaftaran Anda Telah Disetujui - Nyawit AI", html)
 
 def send_email_change_link(to_email: str, token: str):
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip('/')
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip('/')
     reset_link = f"{frontend_url}/change-email?token={token}"
     html = f"""<html><body>
         <h3>Konfirmasi Perubahan Email</h3>
