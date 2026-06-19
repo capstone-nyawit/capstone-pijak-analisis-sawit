@@ -16,3 +16,7 @@ __pycache__/
 
 # Local test outputs
 test_api_out.txt
+
+# Git backups
+.git_backup/
+frontend/.git_backup/
